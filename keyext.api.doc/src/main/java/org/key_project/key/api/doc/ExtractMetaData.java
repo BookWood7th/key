@@ -76,7 +76,7 @@ public class ExtractMetaData implements Callable<Integer> {
     public Integer call() throws IOException {
         if (source != null) {
             ParserConfiguration config = new ParserConfiguration();
-            config.setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21);
+            config.setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_18);
             config.setAttributeComments(true);
             config.setLexicalPreservationEnabled(false);
             config.setStoreTokens(false);

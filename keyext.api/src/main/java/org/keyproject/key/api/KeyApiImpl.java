@@ -41,6 +41,8 @@ import de.uka.ilkd.key.speclang.PositionedString;
 import de.uka.ilkd.key.strategy.StrategyProperties;
 import de.uka.ilkd.key.util.KeYConstants;
 
+import org.key_project.jmlsurgeon.ParsingException;
+import org.key_project.jmlsurgeon.Surgeon;
 import org.key_project.util.collection.ImmutableList;
 import org.key_project.util.collection.ImmutableSet;
 
@@ -57,6 +59,7 @@ import org.keyproject.key.api.remoteapi.PrintOptions;
 import org.keyproject.key.api.remoteclient.ClientApi;
 
 import static de.uka.ilkd.key.proof.ProofNodeDescription.collectPathInformation;
+import static org.key_project.jmlsurgeon.Surgeon.*;
 
 public final class KeyApiImpl implements KeyApi {
     private final KeyIdentifications data = new KeyIdentifications();
@@ -503,6 +506,17 @@ public final class KeyApiImpl implements KeyApi {
                     return Either.forLeft(envId);
                 }
             } catch (ProblemLoaderException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<String> insertInvariant(String file, String methodName, String marker, String invariant) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return integrateLoopInvariant(file, methodName, marker, invariant);
+            } catch (ParsingException e) {
                 throw new RuntimeException(e);
             }
         });

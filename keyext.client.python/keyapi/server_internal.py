@@ -176,6 +176,11 @@ class KeyServer(ServerBase):
 
        return self._call_sync("server/shutdown", [])
 
+    def surgeon_insertInvariant(self, file : str, methodName : str, marker : str, invariant : str) -> str:
+       """"""
+
+       return self._call_sync("surgeon/insertInvariant", [file , methodName , marker , invariant])
+
 class Client(abc.ABCMeta):
     @abstractmethod
     def client_logTrace(self, params : LogTraceParams):

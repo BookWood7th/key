@@ -1,0 +1,16 @@
+plugins {
+    id 'java'
+}
+
+group = 'org.key-project'
+version = '2.12.4-dev'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(":key.core")
+
+    implementation files('jmlparser/javaparser-core/target/jmlparser-core-3.25.10-b6-SNAPSHOT.jar')
+}

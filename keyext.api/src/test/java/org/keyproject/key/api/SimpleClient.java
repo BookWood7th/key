@@ -40,8 +40,8 @@ class SimpleClient implements ClientApi {
     }
 
     @Override
-    public void taskFinished(TaskFinishedInfo info) {
-        System.out.println(info);
+    public void taskFinished(org.keyproject.key.api.data.TaskFinishedInfo info) {
+
     }
 
     @Override
@@ -50,7 +50,7 @@ class SimpleClient implements ClientApi {
     }
 
     @Override
-    public void taskStarted(TaskStartedInfo info) {
-        System.out.println(info);
+    public void taskStarted(org.keyproject.key.api.data.TaskStartedInfo info) {
+
     }
 }

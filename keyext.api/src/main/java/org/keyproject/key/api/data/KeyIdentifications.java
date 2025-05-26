@@ -13,6 +13,7 @@ import de.uka.ilkd.key.proof.Proof;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.keyproject.key.api.internal.NodeText;
 
 /**
@@ -149,12 +150,12 @@ public class KeyIdentifications {
      * @author Alexander Weigl
      * @version 1 (28.10.23)
      */
-    public record KeyEnvironmentContainer(WeakReference<KeYEnvironment<?>> env,
+    public record KeyEnvironmentContainer(Box<KeYEnvironment<?>> env,
                                           BiMap<ProofId, ProofContainer> mapProof
     ) {
 
         public KeyEnvironmentContainer(KeYEnvironment<?> env) {
-            this(new WeakReference<>(env), HashBiMap.create(1));
+            this(new Box<>(env), HashBiMap.create(1));
         }
 
         void dispose() {
@@ -163,17 +164,43 @@ public class KeyIdentifications {
         }
     }
 
-    private record ProofContainer(WeakReference<Proof> wProof,
-                                  BiMap<NodeId, WeakReference<Node>> mapNode,
-                                  BiMap<TreeNodeId, WeakReference<TreeNodeDesc>> mapTreeNode,
+    private record ProofContainer(Box<Proof> wProof,
+                                  BiMap<NodeId, Box<Node>> mapNode,
+                                  BiMap<TreeNodeId, Box<TreeNodeDesc>> mapTreeNode,
                                   BiMap<NodeTextId, NodeText> mapGoalText
     ) {
         public ProofContainer(Proof proof) {
-            this(new WeakReference<>(proof), HashBiMap.create(16), HashBiMap.create(16), HashBiMap.create(16));
+            this(new Box<>(proof), HashBiMap.create(16), HashBiMap.create(16), HashBiMap.create(16));
         }
 
         void dispose() {
             mapNode.clear();
+        }
+    }
+
+    private static class Box<T> {
+        @Nullable
+        private T value;
+
+        public Box(T value) {
+            this.value = value;
+        }
+
+        @Nullable
+        public T get() {
+            return value;
+        }
+
+        public void set(T value) {
+            this.value = value;
+        }
+
+        public boolean isEmpty() {
+            return value == null;
+        }
+
+        public void clear() {
+            value = null;
         }
     }
 }

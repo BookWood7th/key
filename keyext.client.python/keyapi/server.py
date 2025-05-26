@@ -1,4 +1,8 @@
 import socket
+import subprocess
+import sys
+import time
+
 from keyapi import LspEndpoint, LoadParams, StrategyOptions
 from keyapi.server_internal import KeyServer
 from keyapi.rpc import JsonRpcEndpoint
@@ -30,6 +34,37 @@ class NetKeY(object):
         self.inStream.close()
         self.outStream.close()
         self.socket.close()
+
+
+class KeY(NetKeY):
+    def __init__(self, jar_location,port=5151):
+        self.process = subprocess.Popen(
+            ["java", "-jar", jar_location, "--server",str(port)],  # Replace with actual software
+            stdin=subprocess.PIPE,
+            stdout=sys.stdout,
+            stderr=sys.stderr,  # Capture stderr if needed
+            text=True,
+            bufsize=1  # Line-buffered
+        )
+        time.sleep(1)
+        super().__init__(("127.0.0.1", port))
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        super().__exit__(exc_type, exc_val, exc_tb)
+        try:
+            self.process.wait(10)
+        except subprocess.TimeoutExpired as e:
+            try:
+                self.process.terminate()
+                self.process.wait(10)
+            except subprocess.TimeoutExpired as e:
+                self.process.kill()
+
+    def register_notification(self, method, callback):
+        self.endpoint.notify_callbacks[method] = callback
 
 class KeYEnv(object):
     def __init__(self, key, load_params : LoadParams):

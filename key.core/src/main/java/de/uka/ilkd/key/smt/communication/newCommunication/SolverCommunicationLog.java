@@ -1,7 +1,9 @@
 /* This file is part of KeY - https://key-project.org
  * KeY is licensed under the GNU General Public License Version 2
  * SPDX-License-Identifier: GPL-2.0-only */
-package de.uka.ilkd.key.smt.communication;
+package de.uka.ilkd.key.smt.communication.newCommunication;
+
+import de.uka.ilkd.key.smt.communication.SolverCommunication;
 
 import java.util.Collections;
 import java.util.LinkedList;
@@ -20,12 +22,9 @@ import java.util.stream.Collectors;
  * @author Benjamin Niedermann
  * @author Wolfram Pfeifer (overhaul)
  */
-public class SolverCommunication {
+public class SolverCommunicationLog {
     /** All messages (input/output/error) sent between KeY and SMT solver. */
     private final List<Message> messages = Collections.synchronizedList(new LinkedList<>());
-
-    /** The current state of the communication. The states are defined by the solver sockets. */
-    private int state = 0;
 
     /**
      * The message type depends on the channel which was used for sending the message.
@@ -93,15 +92,7 @@ public class SolverCommunication {
      * @param message the text of the message to add
      * @param type the type of the message to add
      */
-    public void addMessage(String message, MessageType type) {
+    void addMessage(String message, MessageType type) {
         messages.add(new Message(message, type));
-    }
-
-    public int getState() {
-        return state;
-    }
-
-    void setState(int state) {
-        this.state = state;
     }
 }

@@ -16,6 +16,8 @@ import de.uka.ilkd.key.smt.*;
 import de.uka.ilkd.key.smt.communication.AbstractCESolverSocket;
 import de.uka.ilkd.key.smt.communication.AbstractSolverSocket;
 import de.uka.ilkd.key.smt.communication.Z3Socket;
+import de.uka.ilkd.key.smt.communication.newCommunication.SMTResponseDecoder;
+import de.uka.ilkd.key.smt.communication.newCommunication.commands.SMTSolverCommandSerializer;
 import de.uka.ilkd.key.smt.newsmt2.ModularSMTLib2Translator;
 
 import org.jspecify.annotations.NonNull;
@@ -507,6 +509,18 @@ public final class SolverTypeImplementation implements SolverType {
     @Override
     public @NonNull AbstractSolverSocket getSocket(ModelExtractor query) {
         return solverSocket.copy();
+    }
+
+    @Override
+    public SMTSolverCommandSerializer getSerializer() {
+        //TODO implement Serializers for different SMT solvers
+        return null;
+    }
+
+    @Override
+    public SMTResponseDecoder getResponseDecoder() {
+        //TODO implement Decoders
+        return null;
     }
 
 }

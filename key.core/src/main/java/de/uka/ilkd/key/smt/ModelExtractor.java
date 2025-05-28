@@ -14,6 +14,7 @@ import de.uka.ilkd.key.smt.model.*;
 
 import org.key_project.logic.sort.Sort;
 
+//TODO it would make sense to introduce a more general variant of this, to provide an extension point for other solvers that support model generation
 /**
  * Represents a query directed to towards the z3 solver.
  *

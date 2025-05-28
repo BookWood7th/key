@@ -341,10 +341,9 @@ public final class SMTSolverImplementation implements SMTSolver {
             problemString = objTrans.translateProblem(sequent, services, smtSettings).toString();
             ModelExtractor transQuery = objTrans.getQuery();
             AbstractSolverSocket socket = getSocket();
-            if (!(socket instanceof AbstractCESolverSocket)) {
-                throw new IllegalStateException("Socket used does not support counterexamples.");
+            if ((socket instanceof AbstractCESolverSocket)) {
+                ((AbstractCESolverSocket) socket).setQuery(transQuery);
             }
-            ((AbstractCESolverSocket) socket).setQuery(transQuery);
             tacletTranslation = null;
         } else {
             SMTTranslator trans = getType().createTranslator();

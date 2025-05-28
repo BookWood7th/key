@@ -20,6 +20,8 @@ import de.uka.ilkd.key.java.Services;
 import de.uka.ilkd.key.smt.*;
 import de.uka.ilkd.key.smt.communication.AbstractSolverSocket;
 
+import de.uka.ilkd.key.smt.communication.newCommunication.SMTResponseDecoder;
+import de.uka.ilkd.key.smt.communication.newCommunication.commands.SMTSolverCommandSerializer;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -205,4 +207,7 @@ public interface SolverType {
     @NonNull
     AbstractSolverSocket getSocket(ModelExtractor query);
 
+    SMTSolverCommandSerializer getSerializer();
+
+    SMTResponseDecoder getResponseDecoder();
 }

@@ -5,6 +5,7 @@ package de.uka.ilkd.key.smt.communication.newCommunication;
 
 import java.io.IOException;
 
+import de.uka.ilkd.key.smt.communication.SolverCommunication;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -40,7 +41,7 @@ public interface Pipe {
      * @return the data sent between KeY and solver until now
      */
     @NonNull
-    SolverCommunicationLog getSolverCommunication();
+    SolverCommunication getSolverCommunication();
 
     /**
      * Forcibly closes the Pipe by destroying the process. Calling this method should be avoided if

@@ -45,6 +45,7 @@ import de.uka.ilkd.key.settings.ProofIndependentSMTSettings;
 import de.uka.ilkd.key.settings.ProofIndependentSettings;
 import de.uka.ilkd.key.smt.*;
 import de.uka.ilkd.key.smt.SMTSolverResult.ThreeValuedTruth;
+import de.uka.ilkd.key.smt.solvertypes.SolverType;
 import de.uka.ilkd.key.speclang.Contract;
 import de.uka.ilkd.key.speclang.OperationContract;
 import de.uka.ilkd.key.util.ProgressMonitor;
@@ -623,8 +624,8 @@ public class IntermediateProofReplayer {
                 problems.add(smtProblem);
 
                 SolverLauncher launcher = new SolverLauncher(settings);
-                launcher.launch(active.getTypes(), problems,
-                    proof.getServices());
+                launcher.launch(problems,
+                    proof.getServices(), active.getTypes().toArray(new SolverType[0]));
             } catch (Exception e) {
                 error = true;
             }

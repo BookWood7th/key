@@ -101,10 +101,12 @@ public class SMTProblem {
      * thrown.
      */
     public SMTSolverResult getFinalResult() {
-        SMTSolverResult unknown = SMTSolverResult
-                .getUnknownResult(solvers.stream().findFirst().orElseThrow(), this, -1L, null);
+        SMTSolver firstSolver = getSolvers().iterator().next();
+        SMTSolverResult unknown = SMTSolverResult.getUnknownResult(firstSolver.getType(), firstSolver.getProblem(), -1l, firstSolver.getSolverCommunication(), firstSolver.getFinalResult().getTranslation().orElse(""));
         SMTSolverResult valid = null;
         SMTSolverResult invalid = null;
+
+        //TODO needs rework, currently favors solvers in the right-most column
         for (SMTSolver solver : solvers) {
             if (solver.getFinalResult() == null) {
                 // do nothing

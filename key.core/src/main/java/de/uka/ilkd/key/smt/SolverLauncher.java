@@ -4,12 +4,9 @@
 package de.uka.ilkd.key.smt;
 
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.*;
 
 import de.uka.ilkd.key.java.Services;
-import de.uka.ilkd.key.smt.SMTSolver.ReasonOfInterruption;
 import de.uka.ilkd.key.smt.solvertypes.SolverType;
 
 /**
@@ -76,11 +73,7 @@ import de.uka.ilkd.key.smt.solvertypes.SolverType;
  * can be accessed by <code>solver.getException</code>.
  */
 
-public class SolverLauncher {
-
-    private ExecutorService threadPool;
-
-    private Collection<SMTSolver> solvers;
+public class SolverLauncher implements AutoCloseable {
 
     /* ############### Public Interface #################### */
 
@@ -100,11 +93,11 @@ public class SolverLauncher {
      * <code>launcherStopped</code> of the listener is called.
      */
     public void addListener(SolverLauncherListener listener) {
-        listeners.add(listener);
+        this.listener.addListener(listener);
     }
 
     public void removeListener(SolverLauncherListener listener) {
-        listeners.remove(listener);
+        this.listener.removeListener(listener);
     }
 
     /**
@@ -117,8 +110,7 @@ public class SolverLauncher {
      * @param solverTypes A list of solver types that should be used for the problem.
      */
     public void launch(SMTProblem problem, Services services, SolverType... solverTypes) {
-        checkLaunchCall();
-        launchIntern(problem, services, solverTypes);
+        launch(List.of(problem), services, solverTypes);
     }
 
     /**
@@ -130,24 +122,28 @@ public class SolverLauncher {
      * @param services The services object of the current proof.
      * @param solverTypes A list of solver types that should be used for the problem.
      */
-    public void launch(Collection<SolverType> solverTypes, Collection<SMTProblem> problems,
-            Services services) {
-        checkLaunchCall();
-        launchIntern(solverTypes, problems, services);
+    public void launch(Collection<SMTProblem> problems, Services services, SolverType... solverTypes) {
+        launch(problems, services, List.of(solverTypes));
     }
 
-    /**
-     * If all permits of the semaphore are acquired the launcher must be stopped.
-     */
-    private boolean isInterrupted() {
-        return stopSemaphore.availablePermits() == 0;
+    public void launch(Collection<SMTProblem> problems, Services services, Collection<SolverType> solverTypes) {
+        start();
+        launchIntern(problems, services, solverTypes);
+    }
+
+    private void start() {
+        close();
+        if (launcherHasBeenUsed) {
+            throw new IllegalStateException("SolverLauncher has already been started");
+        }
+        launcherHasBeenUsed = true;
+        threadPool = Executors.newFixedThreadPool(settings.getMaxConcurrentProcesses());
     }
 
     /**
      * Stops the execution of the launcher.
      */
-    public void stop() {
-        solvers.forEach((solver) -> solver.interrupt(ReasonOfInterruption.User));
+    public void close() {
         if (threadPool != null) {
             threadPool.shutdownNow();
         }
@@ -156,129 +152,77 @@ public class SolverLauncher {
 
     /* ################ Implementation ############################ */
 
+    private ExecutorService threadPool;
+
+    private final CompositeSolverLauncherListener listener = new CompositeSolverLauncherListener();
+
     /**
      * The SMT settings that should be used
      */
     private final SMTSettings settings;
 
-    /**
-     * This semaphore is used for stopping the launcher. If the permit is acquired the launcher
-     * stops.
-     */
-    private final Semaphore stopSemaphore = new Semaphore(1, true);
-
-    private final LinkedList<SolverLauncherListener> listeners = new LinkedList<>();
+    private final Collection<SMTSolver> solvers = new LinkedList<>();
 
     /**
      * Every launcher object should be used only once.
      */
     private boolean launcherHasBeenUsed = false;
 
-    /**
-     * Creates the concrete solver objects and distributes them to the SMT problems.
-     */
-    private void prepareSolvers(Collection<SolverType> factories, Collection<SMTProblem> problems,
-            Services services) {
-        threadPool = Executors.newFixedThreadPool(settings.getMaxConcurrentProcesses());
-        this.solvers = new ArrayList<>();
-        for (SMTProblem problem : problems) {
-            for (SolverType factory : factories) {
-                if (factory.isInstalled(false)) {
-                    SMTSolver solver = factory.createSolver(problem, null, services, settings,
-                        settings.getTimeout(factory));
-                    problem.addSolver(solver);
-                    solvers.add(solver);
-                }
-            }
-        }
-    }
+    private void launchIntern(Collection<SMTProblem> problems, Services services, Collection<SolverType> solverTypes) {
+        Collection<Callable<SMTSolverResult>> tasks = prepareTasks(problems, services, solverTypes);
 
-    private void launchIntern(SMTProblem problem, Services services, SolverType[] solverTypes) {
-        LinkedList<SolverType> types = new LinkedList<>();
-        Collections.addAll(types, solverTypes);
-        LinkedList<SMTProblem> problems = new LinkedList<>();
-        problems.add(problem);
-        launchIntern(types, problems, services);
-    }
-
-    private void launchIntern(Collection<SolverType> factories, Collection<SMTProblem> problems,
-            Services services) {
-        // consider only installed solvers.
-        LinkedList<SolverType> installedSolvers = new LinkedList<>();
-        for (SolverType type : factories) {
-            if (type.isInstalled(false)) {
-                installedSolvers.add(type);
-                if (settings.checkForSupport()) {
-                    type.checkForSupport();
-                }
-            }
-        }
-        prepareSolvers(installedSolvers, problems, services);
-        launchIntern(problems, installedSolvers);
-    }
-
-    private void checkLaunchCall() {
-        if (launcherHasBeenUsed) {
-            throw new IllegalStateException("Every launcher object can be used only once.");
-        }
-        launcherHasBeenUsed = true;
-    }
-
-    private void launchIntern(Collection<SMTProblem> problems, Collection<SolverType> factories) {
-
-        LinkedList<SMTSolver> solvers = new LinkedList<>();
-        for (SMTProblem problem : problems) {
-            solvers.addAll(problem.getSolvers());
-        }
-        launchSolvers(solvers, problems, factories);
-    }
-
-    private void launchSolvers(Queue<SMTSolver> solvers, Collection<SMTProblem> problems,
-            Collection<SolverType> solverTypes) {
         // Show progress dialog
         notifyListenersOfStart(problems, solverTypes);
 
-        // Launch all solvers until the queue is empty or the launcher is
-        // interrupted.
-        launchLoop(solvers);
-
-        cleanUp(solvers);
+        tasks.forEach(threadPool::submit);
 
         notifyListenersOfStop();
     }
 
-    private void notifyListenersOfStart(Collection<SMTProblem> problems,
-            Collection<SolverType> solverTypes) {
-        for (SolverLauncherListener listener : listeners) {
-            listener.launcherStarted(problems, solverTypes, this);
-        }
-    }
+    private Collection<Callable<SMTSolverResult>> prepareTasks(Collection<SMTProblem> problems, Services services, Collection<SolverType> solverTypes) {
+        Collection<Callable<SMTSolverResult>> tasks = new ArrayList<>();
 
-    /**
-     * Core of the launcher. Start all solvers until the queue is empty or the launcher is
-     * interrupted.
-     */
-    private void launchLoop(Queue<SMTSolver> solvers) {
-        // as long as there are jobs to do, start solvers
-        try {
-            threadPool.invokeAll(solvers);
-        } catch (InterruptedException e) {
-            launcherInterrupted(e);
-            notifyListenersOfStop();
-        }
-    }
+        //Only consider installed solver types.
+        Collection<SolverType> installedSolverTypes = solverTypes.stream().filter((type) -> {
+            if (settings.checkForSupport()) {
+                //TODO this should display a warning of some kind. Implement in SolverListener
+                return type.checkForSupport();
+            } else {
+                boolean forceRecheckInstallFlag = false;
+                return type.isInstalled(forceRecheckInstallFlag);
+            }
+        }).toList();
 
-    /**
-     * In case of that the user has interrupted the execution the reason of interruption must be
-     * set.
-     */
-    private void cleanUp(Collection<SMTSolver> solvers) {
-        if (isInterrupted()) {
-            for (SMTSolver solver : solvers) {
-                solver.interrupt(ReasonOfInterruption.User);
+        for (SMTProblem problem : problems) {
+            for (SolverType solverType : installedSolverTypes) {
+                SMTSolver solver = solverType.createSolver(problem, null, services, settings, solverType.getSolverTimeout());
+                solvers.add(solver);
+                //TODO change this when refactoring SMTProblem
+                problem.addSolver(solver);
+
+                Callable<SMTSolverResult> solverTask = () -> {
+                    FutureTask<SMTSolverResult> solverComputationTask = new FutureTask<>(solver);
+                    try {
+                        solverComputationTask.run();
+                        return solverComputationTask.get(solverType.getSolverTimeout(), TimeUnit.MILLISECONDS);
+                    } catch (TimeoutException ex) {
+                        solverComputationTask.cancel(true);
+                        SMTSolverResult result = solver.getFinalResult();
+                        return SMTSolverResult.getTimeoutResult(solverType, problem, result.getTimeTaken(), result.getSolverCommunication(), result.getTranslation().orElseThrow());
+                    } finally {
+                        System.out.println(solver.getFinalResult());
+                    }
+                };
+
+                tasks.add(solverTask);
             }
         }
-        threadPool.shutdown();
+        return tasks;
+    }
+
+    private void notifyListenersOfStart(Collection<SMTProblem> problems,
+            Collection<SolverType> solverTypes) {
+        listener.launcherStarted(problems, solverTypes, this);
     }
 
     private void notifyListenersOfStop() {
@@ -291,20 +235,42 @@ public class SolverLauncher {
             }
         }
 
-        for (SolverLauncherListener listener : listeners) {
-            listener.launcherStopped(this, finishedSolvers);
-        }
-
-        if (solvers.size() != finishedSolvers.size() && listeners.isEmpty()) {
-            throw new SolverLauncherException(solvers);
-        }
+        listener.launcherStopped(this,  finishedSolvers);
     }
 
-    /**
-     * If there is some exception that is caused by the launcher (not by the solvers) just forward
-     * it
-     */
-    private void launcherInterrupted(Exception e) {
-        throw new RuntimeException(e);
+    static class CompositeSolverLauncherListener implements SolverLauncherListener {
+        private final Collection<SolverLauncherListener> listeners = new ArrayList<>();
+
+        public CompositeSolverLauncherListener() {}
+
+        public boolean addListener(SolverLauncherListener listener) {
+            return listeners.add(listener);
+        }
+
+        public boolean removeListener(SolverLauncherListener listener) {
+            return listeners.remove(listener);
+        }
+
+        public boolean isEmpty() {
+            return listeners.isEmpty();
+        }
+
+        @Override
+        public void launcherStarted(Collection<SMTProblem> problems, Collection<SolverType> solverTypes, SolverLauncher launcher) {
+            listeners.forEach(listener -> {
+               try {
+                   listener.launcherStarted(problems, solverTypes, launcher);
+               } catch (Exception ignored) {}
+            });
+        }
+
+        @Override
+        public void launcherStopped(SolverLauncher launcher, Collection<SMTSolver> finishedSolvers) {
+            listeners.forEach(listener -> {
+                try {
+                    listener.launcherStopped(launcher, finishedSolvers);
+                } catch (Exception ignored) {}
+            });
+        }
     }
 }

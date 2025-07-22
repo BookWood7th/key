@@ -4,19 +4,20 @@
 package de.uka.ilkd.key.smt;
 
 import de.uka.ilkd.key.smt.communication.SolverCommunication;
+import de.uka.ilkd.key.smt.solvertypes.SolverType;
+
+import java.util.Optional;
 
 /**
  * Encapsulates the result of a single solver.
  */
 public abstract class SMTSolverResult {
 
-    /**
-     * Solver this result belongs to
-     */
-    private final SMTSolver solver;
+    private final SolverType solverType;
     private final SMTProblem problem;
     private final long timeTaken;
     private final SolverCommunication solverCommunication;
+    private final Optional<String> translation;
 
     /**
      * In the context of proving nodes/sequents these values mean the following: TRUE iff negation
@@ -41,42 +42,50 @@ public abstract class SMTSolverResult {
         }
     }
 
-    public static SMTValidResult getValidResult(SMTSolver solver, SMTProblem problem,
-            long timeTaken, SolverCommunication solverCommunication) {
-        return new SMTValidResult(solver, problem, timeTaken, solverCommunication);
+    public static SMTValidResult getValidResult(SolverType solver, SMTProblem problem,
+            long timeTaken, SolverCommunication solverCommunication, String translation) {
+        return new SMTValidResult(solver, problem, timeTaken, solverCommunication, translation);
     }
 
-    public static SMTFalsifiableResult getFalsifiableResult(SMTSolver solver, SMTProblem problem,
-            long timeTaken, SolverCommunication solverCommunication) {
-        return new SMTFalsifiableResult(solver, problem, timeTaken, solverCommunication);
+    public static SMTFalsifiableResult getFalsifiableResult(SolverType solver, SMTProblem problem,
+            long timeTaken, SolverCommunication solverCommunication, String translation) {
+        return new SMTFalsifiableResult(solver, problem, timeTaken, solverCommunication, translation);
     }
 
-    public static SMTCEResult getCEResult(SMTSolver solver, SMTProblem problem, long timeTaken,
-            SolverCommunication solverCommunication, ModelExtractor query) {
-        return new SMTCEResult(solver, problem, timeTaken, solverCommunication, query);
+    public static SMTCEResult getCEResult(SolverType solver, SMTProblem problem, long timeTaken,
+            SolverCommunication solverCommunication, String translation, ModelExtractor query) {
+        return new SMTCEResult(solver, problem, timeTaken, solverCommunication, translation, query);
     }
 
-    public static SMTUnknownResult getUnknownResult(SMTSolver solver, SMTProblem problem,
-            long timeTaken, SolverCommunication solverCommunication) {
-        return new SMTUnknownResult(solver, problem, timeTaken, solverCommunication);
+    public static SMTUnknownResult getUnknownResult(SolverType solver, SMTProblem problem,
+            long timeTaken, SolverCommunication solverCommunication, String translation) {
+        return new SMTUnknownResult(solver, problem, timeTaken, solverCommunication, translation);
     }
 
-    public static SMTTimeoutResult getTimeoutResult(SMTSolver solver, SMTProblem problem,
-            long timeTaken, SolverCommunication solverCommunication) {
-        return new SMTTimeoutResult(solver, problem, timeTaken, solverCommunication);
+    public static SMTTimeoutResult getTimeoutResult(SolverType solver, SMTProblem problem,
+            long timeTaken, SolverCommunication solverCommunication, String translation) {
+        return new SMTTimeoutResult(solver, problem, timeTaken, solverCommunication, translation);
     }
 
-    public static SMTExceptionResult getExceptionResult(SMTSolver solver, SMTProblem problem,
-            long timeTaken, SolverCommunication solverCommunication, Throwable exception) {
-        return new SMTExceptionResult(solver, problem, timeTaken, solverCommunication, exception);
+    public static SMTExceptionResult getExceptionResult(SolverType solver, SMTProblem problem,
+            long timeTaken, SolverCommunication solverCommunication, String translation, Throwable exception) {
+        return new SMTExceptionResult(solver, problem, timeTaken, solverCommunication, translation, exception);
     }
 
-    private SMTSolverResult(SMTSolver solver, SMTProblem problem, long timeTaken,
-            SolverCommunication solverCommunication) {
-        this.solver = solver;
+    private SMTSolverResult(SolverType solverType, SMTProblem problem, long timeTaken,
+                            SolverCommunication solverCommunication, String translation) {
+        this.solverType = solverType;
         this.problem = problem;
         this.timeTaken = timeTaken;
         this.solverCommunication = solverCommunication;
+
+        if (translation != null) {
+            this.translation = Optional.of(translation);
+        } else {
+            //Translation likely failed
+            //TODO should there be different handling of this case?
+            this.translation = Optional.empty();
+        }
     }
 
     public abstract ThreeValuedTruth isValid();
@@ -110,7 +119,15 @@ public abstract class SMTSolverResult {
     }
 
     public String getName() {
-        return solver.name();
+        return solverType.getName();
+    }
+
+    public SolverCommunication getSolverCommunication() {
+        return solverCommunication;
+    }
+
+    public Optional<String> getTranslation() {
+        return translation;
     }
 
 
@@ -129,9 +146,9 @@ public abstract class SMTSolverResult {
 
 
     public static class SMTValidResult extends SMTSolverResult {
-        private SMTValidResult(SMTSolver solver, SMTProblem problem, long timeTaken,
-                SolverCommunication solverCommunication) {
-            super(solver, problem, timeTaken, solverCommunication);
+        private SMTValidResult(SolverType solverType, SMTProblem problem, long timeTaken,
+                SolverCommunication solverCommunication, String translation) {
+            super(solverType, problem, timeTaken, solverCommunication, translation);
         }
 
         @Override
@@ -141,9 +158,9 @@ public abstract class SMTSolverResult {
     }
 
     public static class SMTFalsifiableResult extends SMTSolverResult {
-        private SMTFalsifiableResult(SMTSolver solver, SMTProblem problem, long timeTaken,
-                SolverCommunication solverCommunication) {
-            super(solver, problem, timeTaken, solverCommunication);
+        private SMTFalsifiableResult(SolverType solverType, SMTProblem problem, long timeTaken,
+                SolverCommunication solverCommunication, String translation) {
+            super(solverType, problem, timeTaken, solverCommunication, translation);
         }
 
         @Override
@@ -155,12 +172,11 @@ public abstract class SMTSolverResult {
     public static class SMTCEResult extends SMTFalsifiableResult {
         private final ModelExtractor query;
 
-        private SMTCEResult(SMTSolver solver, SMTProblem problem, long timeTaken,
-                SolverCommunication solverCommunication, ModelExtractor query) {
-            super(solver, problem, timeTaken, solverCommunication);
+        private SMTCEResult(SolverType solverType, SMTProblem problem, long timeTaken,
+                SolverCommunication solverCommunication, String translation, ModelExtractor query) {
+            super(solverType, problem, timeTaken, solverCommunication, translation);
             this.query = query;
         }
-
 
         public ModelExtractor getQuery() {
             return query;
@@ -168,9 +184,9 @@ public abstract class SMTSolverResult {
     }
 
     public static class SMTUnknownResult extends SMTSolverResult {
-        private SMTUnknownResult(SMTSolver solver, SMTProblem problem, long timeTaken,
-                SolverCommunication solverCommunication) {
-            super(solver, problem, timeTaken, solverCommunication);
+        private SMTUnknownResult(SolverType solverType, SMTProblem problem, long timeTaken,
+                SolverCommunication solverCommunication, String translation) {
+            super(solverType, problem, timeTaken, solverCommunication, translation);
         }
 
         @Override
@@ -182,9 +198,9 @@ public abstract class SMTSolverResult {
     public static class SMTExceptionResult extends SMTUnknownResult {
         private final Throwable exception;
 
-        private SMTExceptionResult(SMTSolver solver, SMTProblem problem, long timeTaken,
-                SolverCommunication solverCommunication, Throwable exception) {
-            super(solver, problem, timeTaken, solverCommunication);
+        private SMTExceptionResult(SolverType solver, SMTProblem problem, long timeTaken,
+                SolverCommunication solverCommunication, String translation, Throwable exception) {
+            super(solver, problem, timeTaken, solverCommunication, translation);
             this.exception = exception;
         }
 
@@ -194,9 +210,9 @@ public abstract class SMTSolverResult {
     }
 
     public static class SMTTimeoutResult extends SMTUnknownResult {
-        private SMTTimeoutResult(SMTSolver solver, SMTProblem problem, long timeTaken,
-                SolverCommunication solverCommunication) {
-            super(solver, problem, timeTaken, solverCommunication);
+        private SMTTimeoutResult(SolverType solver, SMTProblem problem, long timeTaken,
+                SolverCommunication solverCommunication, String translation) {
+            super(solver, problem, timeTaken, solverCommunication, translation);
         }
     }
 }

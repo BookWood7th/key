@@ -83,7 +83,7 @@ public class SMTCommand extends AbstractCommand<SMTCommand.SMTCommandArguments> 
         probList.add(new SMTProblem(goal));
         TimerListener timerListener = new TimerListener();
         launcher.addListener(timerListener);
-        launcher.launch(su.getTypes(), probList, goal.proof().getServices());
+        launcher.launch(probList, goal.proof().getServices(), su.getTypes().toArray(new SolverType[0]));
 
         for (SMTProblem problem : probList) {
             SMTSolverResult finalResult = problem.getFinalResult();

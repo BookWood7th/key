@@ -122,7 +122,7 @@ public final class SMTFocusResults {
             return null;
         }
 
-        String[] lines = solver.getRawSolverOutput().split("\n");
+        String[] lines = solver.getFinalResult().getRawSolverOutput().split("\n");
         String lastLine = lines[lines.length - 1];
 
         LOGGER.info("Analyzing unsat core: {}", lastLine);

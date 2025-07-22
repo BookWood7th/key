@@ -1,13 +1,13 @@
-package de.uka.ilkd.key.smt.communication.newCommunication;
+package de.uka.ilkd.key.smt;
 
 import de.uka.ilkd.key.java.Services;
 import de.uka.ilkd.key.java.abstraction.KeYJavaType;
 import de.uka.ilkd.key.logic.Sequent;
 import de.uka.ilkd.key.proof.Proof;
 import de.uka.ilkd.key.proof.mgt.SpecificationRepository;
-import de.uka.ilkd.key.smt.*;
+import de.uka.ilkd.key.smt.communication.SolverCommunication;
+import de.uka.ilkd.key.smt.communication.newCommunication.*;
 import de.uka.ilkd.key.smt.communication.newCommunication.commands.CheckSatCommand;
-import de.uka.ilkd.key.smt.communication.newCommunication.commands.SMTSolverCommandSerializer;
 import de.uka.ilkd.key.smt.solvertypes.SolverType;
 import de.uka.ilkd.key.smt.solvertypes.SolverTypes;
 import org.slf4j.Logger;
@@ -17,7 +17,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 
-public class SMTSolverImpl implements SMTSolver {
+public class SMTSolverImpl implements de.uka.ilkd.key.smt.SMTSolver {
     private static final Logger LOGGER = LoggerFactory.getLogger(SMTSolverImpl.class);
 
     private final SMTProblem problem;
@@ -27,7 +27,7 @@ public class SMTSolverImpl implements SMTSolver {
     private final SMTSolverSocket socket;
     private final SMTSettings smtSettings;
     private final Services services;
-    private final SolverCommunicationLog solverCommunicationLog;
+    private final SolverCommunication solverCommunication;
 
     private String problemString;
     private ModelExtractor query;
@@ -35,6 +35,11 @@ public class SMTSolverImpl implements SMTSolver {
     private SMTSolverResult satisfiabilityResult;
 
     private IllegalFormulaException translationException;
+
+    private de.uka.ilkd.key.smt.SMTSolver.SolverState solverState = SolverState.Waiting;
+
+    //TODO remove this when removing SMTSolver#getStartTime()
+    private long startTime;
 
 
     private boolean started = false;
@@ -48,16 +53,18 @@ public class SMTSolverImpl implements SMTSolver {
         this.services = services;
         this.smtSettings = smtSettings;
 
-        this.solverCommunicationLog = new SolverCommunicationLog();
-        this.socket = new SMTSolverSocket(getSolverStartCommands(), solverType.getDelimiters(), solverCommunicationLog);
+        this.solverCommunication = new SolverCommunication();
+        this.socket = new SMTSolverSocket(getSolverStartCommands(), solverType.getDelimiters(), solverCommunication);
 
-        prepareProblem();
+        translateProblem();
+        solverState = de.uka.ilkd.key.smt.SMTSolver.SolverState.Waiting;
     }
 
-    protected void prepareProblem() {
+    protected void translateProblem() {
         try {
             this.problemString = translateProblem(problem);
-        } catch (IllegalFormulaException ignored) {
+        } catch (IllegalFormulaException e) {
+            translationException = e;
         }
     }
 
@@ -111,6 +118,16 @@ public class SMTSolverImpl implements SMTSolver {
     }
 
     @Override
+    public de.uka.ilkd.key.smt.SMTSolver.SolverState getState() {
+        return solverState;
+    }
+
+    @Override
+    public SolverCommunication getSolverCommunication() {
+        return solverCommunication;
+    }
+
+    @Override
     public synchronized void start() throws IOException {
         close();
         try {
@@ -121,34 +138,57 @@ public class SMTSolverImpl implements SMTSolver {
             throw e;
         }
         started = true;
+        solverState = SolverState.Running;
+        startTime = System.currentTimeMillis();
     }
 
     @Override
-    public synchronized SMTSolverResult checkSatisfiability() throws IOException, InterruptedException {
-        ensureStarted();
-        SMTSolverCommandSerializer serializer = getType().getSerializer();
-        SMTResponseDecoder decoder = getType().getResponseDecoder();
+    public synchronized SMTSolverResult checkSatisfiability() {
+        try {
+            ensureStarted();
+        } catch (IOException e) {
+            long timeTaken = 0;
+            close();
+            return satisfiabilityResult = SMTSolverResult.getExceptionResult(getType(), problem, timeTaken, solverCommunication, problemString, new InterruptedException());
+        }
+        SMTSerializer serializer = getType().getSerializer();
 
         long startTime = System.currentTimeMillis();
-        socket.sendMessage(serializer.serialize(new CheckSatCommand()));
+        try {
+            socket.sendMessage(serializer.serialize(new CheckSatCommand()));
+        } catch (IOException e) {
+            long timeTaken = System.currentTimeMillis() - startTime;
+            close();
+            return (satisfiabilityResult = SMTSolverResult.getExceptionResult(getType(), problem, timeTaken, solverCommunication, problemString, new InterruptedException()));
+        }
 
         String msg;
-        while (true) {
-            msg = socket.readMessage();
-            SocketMessage socketMsg = decoder.decode(msg);
-            if (socketMsg instanceof ResultMsg) {
-                //TODO implement Result /change interfaces to match new architecture
-                return switch (((ResultMsg) socketMsg).result()) {
-                    case VALID -> null;
-                    case FALSIFIABLE -> null;
-                    case UNKNOWN -> null;
-                };
+        while (!Thread.currentThread().isInterrupted()) {
+            try {
+                msg = socket.readMessage();
+            } catch (IOException | InterruptedException e) {
+                long timeTaken = System.currentTimeMillis() - startTime;
+                close();
+                return (satisfiabilityResult = SMTSolverResult.getExceptionResult(getType(), problem, timeTaken, solverCommunication, problemString, new InterruptedException()));
+            }
+            SocketMessage socketMsg = serializer.decode(msg);
+            if (socketMsg instanceof ResultMessage) {
+                long timeTaken = System.currentTimeMillis() - startTime;
+                solverState = de.uka.ilkd.key.smt.SMTSolver.SolverState.Stopped;
+                return (satisfiabilityResult = switch (((ResultMessage) socketMsg).result()) {
+                    case VALID -> SMTSolverResult.getValidResult(getType(), problem, timeTaken, solverCommunication, problemString);
+                    case FALSIFIABLE -> SMTSolverResult.getFalsifiableResult(getType(), problem, timeTaken, solverCommunication, problemString);
+                    case UNKNOWN -> SMTSolverResult.getUnknownResult(getType(), problem, timeTaken, solverCommunication, problemString);
+                });
             }
         }
+        long timeTaken = System.currentTimeMillis() - startTime;
+        //At this point an interrupt occured, before a result was returned. Return an ExceptionResult
+        return satisfiabilityResult = SMTSolverResult.getExceptionResult(getType(), problem, timeTaken, solverCommunication, problemString, new InterruptedException());
     }
 
     @Override
-    public synchronized ModelExtractor extractModel() throws IOException, InterruptedException {
+    public synchronized ModelExtractor extractModel() throws IOException {
         ensureStarted();
         if (!getSolverCapabilities().supportsModelGeneration()) {
             throw new IOException(problemString + " does not support model generation");
@@ -194,6 +234,8 @@ public class SMTSolverImpl implements SMTSolver {
     @Override
     public void close() {
         socket.close();
+        if (solverState == SolverState.Running)
+            solverState = SolverState.Stopped;
     }
 
     static class CompositeSolverListener implements SolverListener {
@@ -242,13 +284,20 @@ public class SMTSolverImpl implements SMTSolver {
                     listener.processTimeout(solver, problem); }
                 catch (Exception ignored) {}});
         }
+    }
 
-        @Override
-        public void processUser(de.uka.ilkd.key.smt.SMTSolver solver, SMTProblem problem) {
-            listeners.forEach(listener -> {
-                try {
-                    listener.processUser(solver, problem); }
-                catch (Exception ignored) {}});
-        }
+    @Override
+    public SMTSolverResult getFinalResult() {
+        return satisfiabilityResult;
+    }
+
+    @Override
+    public ModelExtractor getQuery() {
+        return query;
+    }
+
+    @Override
+    public long getStartTime() {
+        return startTime;
     }
 }

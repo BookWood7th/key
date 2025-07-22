@@ -5,6 +5,7 @@ package de.uka.ilkd.key.smt.communication.newCommunication;
 
 import java.io.*;
 
+import de.uka.ilkd.key.smt.communication.SolverCommunication;
 import org.jspecify.annotations.NonNull;
 
 /**
@@ -22,7 +23,7 @@ public class ExternalProcessLauncher {
     /**
      * the store of all messages send to and received from the external process
      */
-    private final @NonNull SolverCommunicationLog session;
+    private final @NonNull SolverCommunication session;
 
     /**
      * the delimiters which separate the messages
@@ -45,7 +46,7 @@ public class ExternalProcessLauncher {
      * @param session the store for the messages send to and received from the process
      * @param messageDelimiters delimiters which separate the messages
      */
-    public ExternalProcessLauncher(@NonNull SolverCommunicationLog session,
+    public ExternalProcessLauncher(@NonNull SolverCommunication session,
                                    @NonNull String[] messageDelimiters) {
         this.session = session;
         this.messageDelimiters = messageDelimiters;

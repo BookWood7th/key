@@ -35,7 +35,6 @@ import de.uka.ilkd.key.settings.ProofIndependentSMTSettings;
 import de.uka.ilkd.key.settings.ProofIndependentSettings;
 import de.uka.ilkd.key.settings.TestGenerationSettings;
 import de.uka.ilkd.key.smt.*;
-import de.uka.ilkd.key.smt.communication.AbstractCESolverSocket;
 import de.uka.ilkd.key.smt.model.Model;
 import de.uka.ilkd.key.smt.solvertypes.SolverType;
 import de.uka.ilkd.key.smt.solvertypes.SolverTypes;
@@ -187,7 +186,7 @@ public abstract class AbstractTestGenerator {
         if (Thread.interrupted()) {
             return;
         }
-        launcher.launch(solvers, problems, proof.getServices());
+        launcher.launch(problems, proof.getServices(), solvers);
     }
 
     protected void handleAllProofsPerformed(UserInterfaceControl ui) {
@@ -397,14 +396,15 @@ public abstract class AbstractTestGenerator {
                     solver.getFinalResult().isValid();
                 if (res == SMTSolverResult.ThreeValuedTruth.UNKNOWN) {
                     unknown++;
-                    if (solver.getException() != null) {
-                        LOGGER.warn("Solver returned exception", solver.getException());
+                    SMTSolverResult result = solver.getFinalResult();
+                    if (result instanceof SMTSolverResult.SMTExceptionResult) {
+                        LOGGER.warn("Solver returned exception", ((SMTSolverResult.SMTExceptionResult) result).getException());
                     }
                 } else if (res == SMTSolverResult.ThreeValuedTruth.FALSIFIABLE) {
                     solvedPaths++;
-                    if (solver.getSocket() instanceof AbstractCESolverSocket) {
+                    if (solver.getSolverCapabilities().supportsModelGeneration()) {
                         final Model m =
-                            ((AbstractCESolverSocket) solver.getSocket()).getQuery().getModel();
+                            solver.getQuery().getModel();
                         if (TestCaseGenerator.modelIsOK(m)) {
                             output.add(solver);
                         } else {
@@ -435,7 +435,7 @@ public abstract class AbstractTestGenerator {
 
     public void stopSMTLauncher() {
         if (launcher != null) {
-            launcher.stop();
+            launcher.close();
         }
     }
 

@@ -85,11 +85,11 @@ public class InformationWindow extends JDialog {
     }
 
     private void initModel(SMTSolver solver) {
-        if (!(solver.getSocket() instanceof AbstractCESolverSocket socket)) {
+        if (!(solver.getSolverCapabilities().supportsModelGeneration())) {
             return;
         }
 
-        this.model = socket.getQuery().getModel();
+        this.model = solver.getQuery().getModel();
         this.setTitle("Counterexample " + this.getTitle());
         getTabbedPane().addTab("Counterexample", createModelTab());
         createHelpTab();

@@ -23,7 +23,6 @@ import de.uka.ilkd.key.settings.ProofIndependentSMTSettings;
 import de.uka.ilkd.key.settings.ProofIndependentSettings;
 import de.uka.ilkd.key.settings.TestGenerationSettings;
 import de.uka.ilkd.key.smt.*;
-import de.uka.ilkd.key.smt.communication.AbstractCESolverSocket;
 import de.uka.ilkd.key.smt.lang.SMTSort;
 import de.uka.ilkd.key.smt.model.Model;
 import de.uka.ilkd.key.smt.solvertypes.SolverType;
@@ -100,7 +99,7 @@ public class ModelGenerator implements SolverLauncherListener {
             SMTSolverResult result = solver.getFinalResult();
             if (result.isValid().equals(SMTSolverResult.ThreeValuedTruth.FALSIFIABLE)
                     && models.size() < target) {
-                Model model = ((AbstractCESolverSocket) solver.getSocket()).getQuery().getModel();
+                Model model = solver.getQuery().getModel();
                 models.add(model);
                 addModelToTerm(model);
 

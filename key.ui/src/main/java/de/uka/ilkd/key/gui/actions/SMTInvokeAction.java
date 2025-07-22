@@ -76,8 +76,8 @@ public class SMTInvokeAction extends MainWindowAction {
                     proof.getSettings().getNewSMTSettings(), proof);
             SolverLauncher launcher = new SolverLauncher(settings);
             launcher.addListener(new SolverListener(settings, proof));
-            launcher.launch(solverUnion.getTypes(), SMTProblem.createSMTProblems(proof),
-                proof.getServices());
+            launcher.launch(SMTProblem.createSMTProblems(proof),
+                proof.getServices(), solverUnion.getTypes());
 
         }, "SMTRunner");
         thread.start();

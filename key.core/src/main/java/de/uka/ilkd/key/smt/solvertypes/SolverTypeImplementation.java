@@ -16,8 +16,8 @@ import de.uka.ilkd.key.smt.*;
 import de.uka.ilkd.key.smt.communication.AbstractCESolverSocket;
 import de.uka.ilkd.key.smt.communication.AbstractSolverSocket;
 import de.uka.ilkd.key.smt.communication.Z3Socket;
-import de.uka.ilkd.key.smt.communication.newCommunication.SMTResponseDecoder;
-import de.uka.ilkd.key.smt.communication.newCommunication.commands.SMTSolverCommandSerializer;
+import de.uka.ilkd.key.smt.communication.newCommunication.SMTSerializer;
+import de.uka.ilkd.key.smt.communication.newCommunication.Z3Serializer;
 import de.uka.ilkd.key.smt.newsmt2.ModularSMTLib2Translator;
 
 import org.jspecify.annotations.NonNull;
@@ -342,12 +342,11 @@ public final class SolverTypeImplementation implements SolverType {
 
     @Override
     public SMTSolver createSolver(SMTProblem problem, SolverListener listener, Services services,
-            SMTSettings smtSettings, long timeout) {
+                                  SMTSettings smtSettings, long timeout) {
+        //TODO correct SolverCapabilities values and more transparency
         if (timeout > 0)
-            return new SMTSolverImplementation(problem, listener, services, smtSettings, this,
-                timeout);
-        return new SMTSolverImplementation(problem, listener, services, smtSettings, this,
-            defaultTimeout);
+            return new SMTSolverImpl(this, problem, () -> false, services, smtSettings);
+        return new SMTSolverImpl(this, problem, () -> false, services, smtSettings);
     }
 
     @Override
@@ -512,15 +511,9 @@ public final class SolverTypeImplementation implements SolverType {
     }
 
     @Override
-    public SMTSolverCommandSerializer getSerializer() {
+    public SMTSerializer getSerializer() {
         //TODO implement Serializers for different SMT solvers
-        return null;
-    }
-
-    @Override
-    public SMTResponseDecoder getResponseDecoder() {
-        //TODO implement Decoders
-        return null;
+        return new Z3Serializer();
     }
 
 }

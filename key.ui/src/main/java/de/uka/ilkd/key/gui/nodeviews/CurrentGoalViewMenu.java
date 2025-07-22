@@ -521,7 +521,7 @@ public final class CurrentGoalViewMenu extends SequentViewMenu<CurrentGoalView> 
                     launcher.addListener(new SolverListener(settings, goal.proof()));
                     Collection<SMTProblem> list = new LinkedList<>();
                     list.add(new SMTProblem(goal));
-                    launcher.launch(solverUnion.getTypes(), list, goal.proof().getServices());
+                    launcher.launch(list, goal.proof().getServices(), solverUnion.getTypes());
                 }, "SMTRunner");
                 thread.start();
             } else if (e.getSource() instanceof BuiltInRuleMenuItem birmi) {

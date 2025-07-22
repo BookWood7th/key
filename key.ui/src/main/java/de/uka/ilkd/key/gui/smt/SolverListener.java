@@ -31,14 +31,9 @@ import de.uka.ilkd.key.proof.Node;
 import de.uka.ilkd.key.proof.Proof;
 import de.uka.ilkd.key.settings.DefaultSMTSettings;
 import de.uka.ilkd.key.settings.ProofIndependentSMTSettings;
-import de.uka.ilkd.key.smt.SMTFocusResults;
-import de.uka.ilkd.key.smt.SMTProblem;
-import de.uka.ilkd.key.smt.SMTSolver;
-import de.uka.ilkd.key.smt.SMTSolver.ReasonOfInterruption;
+import de.uka.ilkd.key.smt.*;
 import de.uka.ilkd.key.smt.SMTSolver.SolverState;
 import de.uka.ilkd.key.smt.SMTSolverResult.ThreeValuedTruth;
-import de.uka.ilkd.key.smt.SolverLauncher;
-import de.uka.ilkd.key.smt.SolverLauncherListener;
 import de.uka.ilkd.key.smt.solvertypes.SolverType;
 import de.uka.ilkd.key.smt.solvertypes.SolverTypes;
 import de.uka.ilkd.key.taclettranslation.assumptions.TacletSetTranslation;
@@ -51,6 +46,7 @@ public class SolverListener implements SolverLauncherListener {
     // Every SMT problem refers to many solvers.
     private Collection<SMTProblem> smtProblems = new LinkedList<>();
     private boolean[][] problemProcessed;
+    private boolean[][] userInterrupt;
     private int finishedCounter;
     private final Timer timer = new Timer();
     private final DefaultSMTSettings settings;
@@ -106,47 +102,25 @@ public class SolverListener implements SolverLauncherListener {
         }
 
         public void createInformation() {
-            if (solver.getException() != null) {
+            SMTSolverResult solverResult = solver.getFinalResult();
+            if (solverResult instanceof SMTSolverResult.SMTExceptionResult) {
 
                 StringWriter writer = new StringWriter();
 
-                solver.getException().printStackTrace(new PrintWriter(writer));
+                Throwable solverException = ((SMTSolverResult.SMTExceptionResult) solverResult).getException();
+                solverException.printStackTrace(new PrintWriter(writer));
                 addInformation("Error-Message",
-                    solver.getException().toString() + "\n\n" + writer);
+                        solverException.toString() + "\n\n" + writer);
 
 
             }
-            addInformation("Solver Input", solver.getRawSolverInput());
-            if (solver.getTacletTranslation() != null) {
-                addInformation("Taclets", solver.getTacletTranslation().toString());
-            }
-            addInformation("Solver Output", solver.getRawSolverOutput());
-
-            Collection<Throwable> exceptionsOfTacletTranslation =
-                solver.getExceptionsOfTacletTranslation();
-            if (!exceptionsOfTacletTranslation.isEmpty()) {
-                StringBuilder exceptionText =
-                    new StringBuilder(
-                        "The following exceptions have ocurred while translating the taclets:\n\n");
-                int i = 1;
-                for (Throwable e : exceptionsOfTacletTranslation) {
-                    exceptionText.append(i).append(". ").append(e.getMessage());
-                    StringWriter sw = new StringWriter();
-                    PrintWriter pw = new PrintWriter(sw);
-                    e.printStackTrace(pw);
-                    exceptionText.append("\n\n").append(sw);
-                    exceptionText.append("\n #######################\n\n");
-                    i++;
-                }
-                addInformation("Warning", exceptionText.toString());
-            }
+            addInformation("Solver Input", solverResult.getRawSolverInput());
+            addInformation("Solver Output", solverResult.getRawSolverOutput());
 
             if (solver.getType().supportHasBeenChecked()
                     && !solver.getType().isSupportedVersion()) {
                 addInformation("Solver Support", computeSolverTypeWarningMessage(solver.getType()));
             }
-
-            solver.getException();
         }
 
         public LinkedList<Information> getInformation() {
@@ -279,6 +253,7 @@ public class SolverListener implements SolverLauncherListener {
         progressModel.addColumn(new ProgressModel.TitleColumn(captions));
         String[] titles = new String[solverTypes.size() + 1];
         problemProcessed = new boolean[solverTypes.size()][smtProblems.size()];
+        userInterrupt = new boolean[solverTypes.size()][smtProblems.size()];
         titles[0] = "";
         i = 1;
         for (SolverType type : solverTypes) {
@@ -321,16 +296,16 @@ public class SolverListener implements SolverLauncherListener {
     }
 
     private void stopEvent(final SolverLauncher launcher) {
-        launcher.stop();
+        launcher.close();
     }
 
     private void discardEvent(final SolverLauncher launcher) {
-        launcher.stop();
+        launcher.close();
         progressDialog.dispose();
     }
 
     private void applyEvent(final SolverLauncher launcher) {
-        launcher.stop();
+        launcher.close();
         applyResults();
         /*
          * Previously, the progressDialog was only made invisible which enabled users to
@@ -362,7 +337,8 @@ public class SolverListener implements SolverLauncherListener {
     }
 
     private long calculateProgress(InternSMTProblem problem) {
-        long maxTime = problem.solver.getTimeout();
+        //TODO change this to reflect the timeout used in SolverLauncher, suggested rework: SolverListener is passed InternSMTProblem instead of SMTSolver
+        long maxTime = problem.solver.getType().getSolverTimeout();
         long startTime = problem.solver.getStartTime();
         long currentTime = System.currentTimeMillis();
 
@@ -372,7 +348,7 @@ public class SolverListener implements SolverLauncherListener {
     private float calculateRemainingTime(InternSMTProblem problem) {
         long startTime = problem.solver.getStartTime();
         long currentTime = System.currentTimeMillis();
-        long temp = (startTime - currentTime) / 100;
+        long temp = (currentTime - startTime) / 100;
         return Math.max((float) temp / 10.0f, 0);
     }
 
@@ -380,20 +356,19 @@ public class SolverListener implements SolverLauncherListener {
     private boolean refreshProgessOfProblem(InternSMTProblem problem) {
         SolverState state = problem.solver.getState();
         return switch (state) {
-        case Running -> {
-            running(problem);
-            yield true;
-        }
-        case Stopped -> {
-            stopped(problem);
-            yield false;
-        }
-        case Waiting -> {
-            waiting(problem);
-            yield true;
-        }
+            case Running -> {
+                running(problem);
+                yield true;
+            }
+            case Stopped -> {
+                stopped(problem);
+                yield false;
+            }
+            case Waiting -> {
+                waiting(problem);
+                yield true;
+            }
         };
-
     }
 
     private void waiting(InternSMTProblem problem) {
@@ -437,7 +412,7 @@ public class SolverListener implements SolverLauncherListener {
             problemProcessed[x][y] = true;
         }
 
-        if (problem.solver.wasInterrupted()) {
+        if (problem.solver.getFinalResult() instanceof SMTSolverResult.SMTExceptionResult) {
             interrupted(problem);
         } else if (problem.solver.getFinalResult().isValid() == ThreeValuedTruth.VALID) {
 
@@ -453,9 +428,19 @@ public class SolverListener implements SolverLauncherListener {
     }
 
     private void interrupted(InternSMTProblem problem) {
-        ReasonOfInterruption reason = problem.solver.getReasonOfInterruption();
         int x = problem.getSolverIndex();
         int y = problem.getProblemIndex();
+        if (!(problem.solver.getFinalResult() instanceof SMTSolverResult.SMTExceptionResult)) {
+            throw new RuntimeException("This position should not be reachable!");
+        }
+        SMTSolverResult.SMTExceptionResult result =  (SMTSolverResult.SMTExceptionResult) problem.solver.getFinalResult();
+
+        progressModel.setProgress(0, x, y);
+        progressModel.setTextColor(RED.get(), x, y);
+        progressModel.setText("Exception!", x, y);
+
+        //TODO reintroduce User interrupt handling
+        /*
         switch (reason) {
         case Exception -> {
             progressModel.setProgress(0, x, y);
@@ -468,7 +453,7 @@ public class SolverListener implements SolverLauncherListener {
             progressModel.setText("Timeout.", x, y);
         }
         case User -> progressModel.setText("Interrupted by user.", x, y);
-        }
+        }*/
     }
 
     private void successfullyStopped(InternSMTProblem problem, int x, int y) {
@@ -519,12 +504,14 @@ public class SolverListener implements SolverLauncherListener {
     private void storeInformation(SMTProblem problem) {
         for (SMTSolver solver : problem.getSolvers()) {
             if (settings.storeSMTTranslationToFile()) {
-                storeSMTTranslation(solver, problem.getGoal(), solver.getTranslation());
+                storeSMTTranslation(solver, problem.getGoal(), solver.getFinalResult().getRawSolverInput());
             }
+            //TODO figure out the future of TacletTranslation, seems deprecated.
+            /*
             if (settings.makesUseOfTaclets() && settings.storeTacletTranslationToFile()
                     && solver.getTacletTranslation() != null) {
                 storeTacletTranslation(solver, problem.getGoal(), solver.getTacletTranslation());
-            }
+            }*/
         }
     }
 

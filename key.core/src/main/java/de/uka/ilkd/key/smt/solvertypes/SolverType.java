@@ -18,10 +18,9 @@ package de.uka.ilkd.key.smt.solvertypes;
 
 import de.uka.ilkd.key.java.Services;
 import de.uka.ilkd.key.smt.*;
-import de.uka.ilkd.key.smt.communication.AbstractSolverSocket;
 
-import de.uka.ilkd.key.smt.communication.newCommunication.SMTResponseDecoder;
-import de.uka.ilkd.key.smt.communication.newCommunication.commands.SMTSolverCommandSerializer;
+import de.uka.ilkd.key.smt.communication.AbstractSolverSocket;
+import de.uka.ilkd.key.smt.communication.newCommunication.SMTSerializer;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -38,14 +37,14 @@ public interface SolverType {
     /**
      * Creates an instance of SMTSolver representing a concrete instance of that solver.
      *
-     * @param problem the SMT problem that is sent to the resulting SMT solver process
+     * @param problem  the SMT problem that is sent to the resulting SMT solver process
      * @param listener the listener for the solver process
      * @param services services object to be used by the solver process, if needed (see for example
-     *        {@link SMTObjTranslator})
+     *                 {@link SMTObjTranslator})
      * @return a concrete solver process of the type at hand
      */
     SMTSolver createSolver(SMTProblem problem, SolverListener listener, Services services,
-            SMTSettings smtSettings, long timeout);
+                           SMTSettings smtSettings, long timeout);
 
     /**
      * @return the name of the solver.
@@ -207,7 +206,5 @@ public interface SolverType {
     @NonNull
     AbstractSolverSocket getSocket(ModelExtractor query);
 
-    SMTSolverCommandSerializer getSerializer();
-
-    SMTResponseDecoder getResponseDecoder();
+    SMTSerializer getSerializer();
 }

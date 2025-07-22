@@ -1,5 +1,6 @@
 package de.uka.ilkd.key.smt.communication.newCommunication;
 
+import de.uka.ilkd.key.smt.communication.SolverCommunication;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -11,9 +12,9 @@ public class BlockingLoggingPipe implements AutoCloseable, Pipe {
     private final BufferedWriter writer;
     private boolean closed = false;
 
-    private final SolverCommunicationLog session;
+    private final SolverCommunication session;
 
-    public BlockingLoggingPipe(InputStream in, OutputStream out, SolverCommunicationLog session, String[] messageDelimiters) {
+    public BlockingLoggingPipe(InputStream in, OutputStream out, SolverCommunication session, String[] messageDelimiters) {
         this.reader = new BufferedMessageReader(new InputStreamReader(in, StandardCharsets.UTF_8), messageDelimiters);
         this.writer = new BufferedWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8));
         this.session = session;
@@ -26,7 +27,7 @@ public class BlockingLoggingPipe implements AutoCloseable, Pipe {
             writer.write(message);
             writer.newLine();
             writer.flush();
-            session.addMessage(message, SolverCommunicationLog.MessageType.OUTPUT);
+            session.addMessage(message, SolverCommunication.MessageType.OUTPUT);
         } catch (IOException e) {
             close();
             throw e;
@@ -41,7 +42,7 @@ public class BlockingLoggingPipe implements AutoCloseable, Pipe {
             if (message == null) {
                 throw new IOException("End of stream reached");
             }
-            session.addMessage(message, SolverCommunicationLog.MessageType.INPUT);
+            session.addMessage(message, SolverCommunication.MessageType.INPUT);
             return message;
         } catch (IOException e) {
             close();
@@ -50,7 +51,7 @@ public class BlockingLoggingPipe implements AutoCloseable, Pipe {
     }
 
     @Override
-    public @NonNull SolverCommunicationLog getSolverCommunication() {
+    public @NonNull SolverCommunication getSolverCommunication() {
         return session;
     }
 

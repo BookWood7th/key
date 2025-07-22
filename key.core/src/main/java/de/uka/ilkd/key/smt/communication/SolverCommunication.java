@@ -45,7 +45,7 @@ public class SolverCommunication {
      * @param content the text of the message
      * @param type the type of the message (INPUT/OUTPUT/ERROR)
      */
-    public record Message(String content, MessageType type) {
+    public record Message(String content, SolverCommunication.MessageType type) {
     }
 
     /**
@@ -54,7 +54,7 @@ public class SolverCommunication {
      *
      * @return all messages sent in both directions
      */
-    public Iterable<Message> getMessages() {
+    public Iterable<SolverCommunication.Message> getMessages() {
         // wrap into an unmodifiable list to prohibit changes to the messages list
         return Collections.unmodifiableList(messages);
     }
@@ -66,7 +66,7 @@ public class SolverCommunication {
      * @param type the type to filter the messages for
      * @return a new Iterable containing all messages of the given type
      */
-    public Iterable<Message> getMessages(MessageType type) {
+    public Iterable<SolverCommunication.Message> getMessages(SolverCommunication.MessageType type) {
         // since we stream from a list, the original order is maintained
         return messages.stream().filter(m -> m.type() == type)
                 // ACTIVATE WHEN Java 11: // .collect(Collectors.toUnmodifiableList());
@@ -79,10 +79,10 @@ public class SolverCommunication {
      *
      * @return a new Iterable containing all output messages of the solver
      */
-    public Iterable<Message> getOutMessages() {
+    public Iterable<SolverCommunication.Message> getOutMessages() {
         // since we stream from a list, the original order is maintained
         return messages.stream()
-                .filter(m -> m.type() == MessageType.OUTPUT || m.type() == MessageType.ERROR)
+                .filter(m -> m.type() == SolverCommunication.MessageType.OUTPUT || m.type() == SolverCommunication.MessageType.ERROR)
                 // ACTIVATE WHEN Java 11: // .collect(Collectors.toUnmodifiableList());
                 .collect(Collectors.toList());
     }
@@ -93,14 +93,16 @@ public class SolverCommunication {
      * @param message the text of the message to add
      * @param type the type of the message to add
      */
-    public void addMessage(String message, MessageType type) {
-        messages.add(new Message(message, type));
+    public void addMessage(String message, SolverCommunication.MessageType type) {
+        messages.add(new SolverCommunication.Message(message, type));
     }
 
+    @Deprecated
     public int getState() {
         return state;
     }
 
+    @Deprecated
     void setState(int state) {
         this.state = state;
     }

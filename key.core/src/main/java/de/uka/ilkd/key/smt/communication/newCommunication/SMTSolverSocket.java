@@ -1,5 +1,7 @@
 package de.uka.ilkd.key.smt.communication.newCommunication;
 
+import de.uka.ilkd.key.smt.communication.SolverCommunication;
+
 import java.io.IOException;
 
 public final class SMTSolverSocket implements AutoCloseable {
@@ -7,7 +9,7 @@ public final class SMTSolverSocket implements AutoCloseable {
     private final String[] commands;
     private final ExternalProcessLauncher launcher;
 
-    public SMTSolverSocket(String[] commands, String[] messageDelimiters, SolverCommunicationLog solverCommunication) {
+    public SMTSolverSocket(String[] commands, String[] messageDelimiters, SolverCommunication solverCommunication) {
         this.launcher = new ExternalProcessLauncher(solverCommunication, messageDelimiters);
         this.commands = commands;
     }

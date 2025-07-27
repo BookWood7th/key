@@ -136,23 +136,30 @@ public class SolverLauncher implements AutoCloseable {
         if (launcherHasBeenUsed) {
             throw new IllegalStateException("SolverLauncher has already been started");
         }
+        controlThreadPool = Executors.newFixedThreadPool(settings.getMaxConcurrentProcesses());
+        solverThreadPool = Executors.newFixedThreadPool(settings.getMaxConcurrentProcesses());
         launcherHasBeenUsed = true;
-        threadPool = Executors.newFixedThreadPool(settings.getMaxConcurrentProcesses());
     }
 
     /**
      * Stops the execution of the launcher.
      */
     public void close() {
-        if (threadPool != null) {
-            threadPool.shutdownNow();
+        if (solverThreadPool != null) {
+            solverThreadPool.shutdown();
         }
-        notifyListenersOfStop();
+        if (controlThreadPool != null) {
+            controlThreadPool.shutdownNow();
+        }
+        if (launcherHasBeenUsed)
+            notifyListenersOfStop();
     }
 
     /* ################ Implementation ############################ */
 
-    private ExecutorService threadPool;
+    private ExecutorService controlThreadPool;
+
+    private ExecutorService solverThreadPool;
 
     private final CompositeSolverLauncherListener listener = new CompositeSolverLauncherListener();
 
@@ -174,7 +181,12 @@ public class SolverLauncher implements AutoCloseable {
         // Show progress dialog
         notifyListenersOfStart(problems, solverTypes);
 
-        tasks.forEach(threadPool::submit);
+        try {
+            controlThreadPool.invokeAll(tasks);
+        } catch (InterruptedException e) {
+            //TODO implement handling of this case
+            throw new RuntimeException(e);
+        }
 
         notifyListenersOfStop();
     }
@@ -185,7 +197,8 @@ public class SolverLauncher implements AutoCloseable {
         //Only consider installed solver types.
         Collection<SolverType> installedSolverTypes = solverTypes.stream().filter((type) -> {
             if (settings.checkForSupport()) {
-                //TODO this should display a warning of some kind. Implement in SolverListener
+                //TODO this should display a warning of some kind according to settings tooltip. Implement in SolverListener
+                //TODO its also kind of broken, as most solver versions are not supported
                 return type.checkForSupport();
             } else {
                 boolean forceRecheckInstallFlag = false;
@@ -195,7 +208,7 @@ public class SolverLauncher implements AutoCloseable {
 
         for (SMTProblem problem : problems) {
             for (SolverType solverType : installedSolverTypes) {
-                SMTSolver solver = solverType.createSolver(problem, null, services, settings, solverType.getSolverTimeout());
+                SMTSolver solver = solverType.createSolver(problem, null, services, settings);
                 solvers.add(solver);
                 //TODO change this when refactoring SMTProblem
                 problem.addSolver(solver);
@@ -203,14 +216,17 @@ public class SolverLauncher implements AutoCloseable {
                 Callable<SMTSolverResult> solverTask = () -> {
                     FutureTask<SMTSolverResult> solverComputationTask = new FutureTask<>(solver);
                     try {
-                        solverComputationTask.run();
+                        solverThreadPool.submit(solverComputationTask);
                         return solverComputationTask.get(solverType.getSolverTimeout(), TimeUnit.MILLISECONDS);
                     } catch (TimeoutException ex) {
                         solverComputationTask.cancel(true);
                         SMTSolverResult result = solver.getFinalResult();
-                        return SMTSolverResult.getTimeoutResult(solverType, problem, result.getTimeTaken(), result.getSolverCommunication(), result.getTranslation().orElseThrow());
-                    } finally {
-                        System.out.println(solver.getFinalResult());
+                        //TODO this doesn't change the result stored by the solver, so SolverListener doesn't notice this is timeout
+                        return result.changeToTimeoutResult();
+                    } catch (InterruptedException ex) {
+                        solverComputationTask.cancel(true);
+                        solver.close();
+                        return solver.getFinalResult();
                     }
                 };
 

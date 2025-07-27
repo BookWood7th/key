@@ -80,18 +80,18 @@ public class ExternalProcessLauncher {
      * Stops the external process: In particular the pipe is closed and the process is destroyed.
      */
     public void stop() {
+        if (process != null) {
+            // make sure the solver process is properly killed,
+            // otherwise it may consume excessive CPU and RAM
+            process.destroyForcibly();
+            process = null;
+        }
         if (pipe != null) {
             try {
                 pipe.close();
             } catch (IOException ignored) {
             }
             pipe = null;
-        }
-        if (process != null) {
-            // make sure the solver process is properly killed,
-            // otherwise it may consume excessive CPU and RAM
-            process.destroyForcibly();
-            process = null;
         }
     }
 

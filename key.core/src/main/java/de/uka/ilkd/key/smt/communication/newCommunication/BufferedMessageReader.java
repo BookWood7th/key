@@ -59,7 +59,7 @@ class BufferedMessageReader {
      * @return a string between two delimiters or until the EOF.
      * @throws IOException if reading fails
      */
-    public String readMessage() throws IOException, InterruptedException {
+    public String readMessage() throws IOException {
 
         StringBuilder sb = new StringBuilder();
         int c;
@@ -76,9 +76,6 @@ class BufferedMessageReader {
                     // if empty then continue with an empty buffer
                     sb.setLength(0);
                 }
-            }
-            if (Thread.interrupted()) {
-                throw new InterruptedException();
             }
         }
 

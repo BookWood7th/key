@@ -138,8 +138,8 @@ public class SMTSolverImpl implements de.uka.ilkd.key.smt.SMTSolver {
             throw e;
         }
         started = true;
-        solverState = SolverState.Running;
         startTime = System.currentTimeMillis();
+        solverState = SolverState.Running;
     }
 
     @Override
@@ -149,7 +149,7 @@ public class SMTSolverImpl implements de.uka.ilkd.key.smt.SMTSolver {
         } catch (IOException e) {
             long timeTaken = 0;
             close();
-            return satisfiabilityResult = SMTSolverResult.getExceptionResult(getType(), problem, timeTaken, solverCommunication, problemString, new InterruptedException());
+            return satisfiabilityResult = SMTSolverResult.getExceptionResult(getType(), problem, timeTaken, solverCommunication, problemString, e);
         }
         SMTSerializer serializer = getType().getSerializer();
 
@@ -159,7 +159,7 @@ public class SMTSolverImpl implements de.uka.ilkd.key.smt.SMTSolver {
         } catch (IOException e) {
             long timeTaken = System.currentTimeMillis() - startTime;
             close();
-            return (satisfiabilityResult = SMTSolverResult.getExceptionResult(getType(), problem, timeTaken, solverCommunication, problemString, new InterruptedException()));
+            return (satisfiabilityResult = SMTSolverResult.getExceptionResult(getType(), problem, timeTaken, solverCommunication, problemString, e));
         }
 
         String msg;
@@ -169,12 +169,11 @@ public class SMTSolverImpl implements de.uka.ilkd.key.smt.SMTSolver {
             } catch (IOException | InterruptedException e) {
                 long timeTaken = System.currentTimeMillis() - startTime;
                 close();
-                return (satisfiabilityResult = SMTSolverResult.getExceptionResult(getType(), problem, timeTaken, solverCommunication, problemString, new InterruptedException()));
+                return (satisfiabilityResult = SMTSolverResult.getExceptionResult(getType(), problem, timeTaken, solverCommunication, problemString, e));
             }
             SocketMessage socketMsg = serializer.decode(msg);
             if (socketMsg instanceof ResultMessage) {
                 long timeTaken = System.currentTimeMillis() - startTime;
-                solverState = de.uka.ilkd.key.smt.SMTSolver.SolverState.Stopped;
                 return (satisfiabilityResult = switch (((ResultMessage) socketMsg).result()) {
                     case VALID -> SMTSolverResult.getValidResult(getType(), problem, timeTaken, solverCommunication, problemString);
                     case FALSIFIABLE -> SMTSolverResult.getFalsifiableResult(getType(), problem, timeTaken, solverCommunication, problemString);
@@ -234,7 +233,7 @@ public class SMTSolverImpl implements de.uka.ilkd.key.smt.SMTSolver {
     @Override
     public void close() {
         socket.close();
-        if (solverState == SolverState.Running)
+        if (solverState != SolverState.Waiting)
             solverState = SolverState.Stopped;
     }
 

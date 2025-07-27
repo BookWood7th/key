@@ -44,7 +44,7 @@ public interface SolverType {
      * @return a concrete solver process of the type at hand
      */
     SMTSolver createSolver(SMTProblem problem, SolverListener listener, Services services,
-                           SMTSettings smtSettings, long timeout);
+                           SMTSettings smtSettings);
 
     /**
      * @return the name of the solver.

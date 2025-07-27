@@ -7,6 +7,7 @@ import de.uka.ilkd.key.smt.communication.SolverCommunication;
 import de.uka.ilkd.key.smt.solvertypes.SolverType;
 
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Encapsulates the result of a single solver.
@@ -72,6 +73,10 @@ public abstract class SMTSolverResult {
         return new SMTExceptionResult(solver, problem, timeTaken, solverCommunication, translation, exception);
     }
 
+    public SMTTimeoutResult changeToTimeoutResult() {
+        return new SMTTimeoutResult(getSolverType(), getProblem(), getTimeTaken(), getSolverCommunication(), getTranslation().orElse(null));
+    }
+
     private SMTSolverResult(SolverType solverType, SMTProblem problem, long timeTaken,
                             SolverCommunication solverCommunication, String translation) {
         this.solverType = solverType;
@@ -128,6 +133,10 @@ public abstract class SMTSolverResult {
 
     public Optional<String> getTranslation() {
         return translation;
+    }
+
+    public SolverType getSolverType() {
+        return solverType;
     }
 
 

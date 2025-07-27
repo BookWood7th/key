@@ -133,8 +133,8 @@ public class SolverListener implements SolverLauncherListener {
         }
 
         String getTimeInSecAsString() {
-            long intPart = timeToSolve / 1000;
-            long decPart = timeToSolve % 1000;
+            long intPart = solver.getFinalResult().getTimeTaken() / 1000;
+            long decPart = solver.getFinalResult().getTimeTaken() % 1000;
             String decString = decPart >= 100 ? Long.toString(decPart)
                     : decPart >= 10 ? "0" + decPart : "00" + decPart;
             return intPart + "." + decString + "s";
@@ -336,13 +336,18 @@ public class SolverListener implements SolverLauncherListener {
         }
     }
 
-    private long calculateProgress(InternSMTProblem problem) {
+    /**
+     * Returns ratio of time used to total time available to solve the problem.
+     * @param problem - Problem for which to compute progress
+     * @return Ratio of time used until now to the timeout.
+     */
+    private double calculateProgress(InternSMTProblem problem) {
         //TODO change this to reflect the timeout used in SolverLauncher, suggested rework: SolverListener is passed InternSMTProblem instead of SMTSolver
         long maxTime = problem.solver.getType().getSolverTimeout();
         long startTime = problem.solver.getStartTime();
         long currentTime = System.currentTimeMillis();
 
-        return RESOLUTION - ((startTime - currentTime) * RESOLUTION) / maxTime;
+        return (double) ((currentTime - startTime)) / maxTime;
     }
 
     private float calculateRemainingTime(InternSMTProblem problem) {
@@ -377,7 +382,7 @@ public class SolverListener implements SolverLauncherListener {
 
     private void running(InternSMTProblem problem) {
         problem.startTime();
-        long progress = calculateProgress(problem);
+        long progress = (long) (RESOLUTION * calculateProgress(problem));
         progressModel.setProgress((int) progress, problem.getSolverIndex(),
             problem.getProblemIndex());
         float remainingTime = calculateRemainingTime(problem);
@@ -433,27 +438,14 @@ public class SolverListener implements SolverLauncherListener {
         if (!(problem.solver.getFinalResult() instanceof SMTSolverResult.SMTExceptionResult)) {
             throw new RuntimeException("This position should not be reachable!");
         }
-        SMTSolverResult.SMTExceptionResult result =  (SMTSolverResult.SMTExceptionResult) problem.solver.getFinalResult();
 
-        progressModel.setProgress(0, x, y);
-        progressModel.setTextColor(RED.get(), x, y);
-        progressModel.setText("Exception!", x, y);
-
-        //TODO reintroduce User interrupt handling
-        /*
-        switch (reason) {
-        case Exception -> {
+        if (userInterrupt[x][y]) {
+            progressModel.setText("Interrupted by user.", x, y);
+        } else {
             progressModel.setProgress(0, x, y);
             progressModel.setTextColor(RED.get(), x, y);
             progressModel.setText("Exception!", x, y);
         }
-        case NoInterruption -> throw new RuntimeException("This position should not be reachable!");
-        case Timeout -> {
-            progressModel.setProgress(0, x, y);
-            progressModel.setText("Timeout.", x, y);
-        }
-        case User -> progressModel.setText("Interrupted by user.", x, y);
-        }*/
     }
 
     private void successfullyStopped(InternSMTProblem problem, int x, int y) {
@@ -591,7 +583,15 @@ public class SolverListener implements SolverLauncherListener {
 
         @Override
         public void stopButtonClicked() {
+            for (InternSMTProblem problem : problems) {
+                int problemIndex = problem.getProblemIndex();
+                int solverIndex = problem.getSolverIndex();
 
+                // Count all non-finished problems as user interrupts
+                if (!problemProcessed[solverIndex][problemIndex]) {
+                    userInterrupt[solverIndex][problemIndex] = true;
+                }
+            }
             stopEvent(launcher);
         }
 

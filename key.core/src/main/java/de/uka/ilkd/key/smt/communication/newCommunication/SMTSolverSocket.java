@@ -14,20 +14,20 @@ public final class SMTSolverSocket implements AutoCloseable {
         this.commands = commands;
     }
 
-    public synchronized void open() throws IOException {
+    public void open() throws IOException {
         launcher.launch(commands);
     }
 
-    public synchronized void sendMessage(String message) throws IOException {
+    public void sendMessage(String message) throws IOException {
         launcher.getPipe().sendMessage(message);
     }
 
-    public synchronized String readMessage() throws IOException, InterruptedException {
+    public String readMessage() throws IOException, InterruptedException {
         return launcher.getPipe().readMessage();
     }
 
     @Override
-    public synchronized void close() {
+    public void close() {
         launcher.stop();
     }
 }

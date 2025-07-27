@@ -6,6 +6,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.*;
 
 public class BlockingLoggingPipe implements AutoCloseable, Pipe {
     private final BufferedMessageReader reader;
@@ -14,14 +15,18 @@ public class BlockingLoggingPipe implements AutoCloseable, Pipe {
 
     private final SolverCommunication session;
 
+    private final ExecutorService executor;
+
     public BlockingLoggingPipe(InputStream in, OutputStream out, SolverCommunication session, String[] messageDelimiters) {
-        this.reader = new BufferedMessageReader(new InputStreamReader(in, StandardCharsets.UTF_8), messageDelimiters);
+        this.reader = new BufferedMessageReader(new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8)), messageDelimiters);
         this.writer = new BufferedWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8));
         this.session = session;
+
+        this.executor = Executors.newVirtualThreadPerTaskExecutor();
     }
 
     @Override
-    public synchronized void sendMessage(@NonNull String message) throws IOException {
+    public void sendMessage(@NonNull String message) throws IOException {
         throwIfClosed();
         try {
             writer.write(message);
@@ -35,17 +40,21 @@ public class BlockingLoggingPipe implements AutoCloseable, Pipe {
     }
 
     @Override
-    public synchronized @Nullable String readMessage() throws IOException, InterruptedException {
+    public @Nullable String readMessage() throws IOException, InterruptedException {
         throwIfClosed();
+        Future<String> futureMessage = executor.submit(reader::readMessage);
+
         try {
-            String message = reader.readMessage();
-            if (message == null) {
-                throw new IOException("End of stream reached");
+            return futureMessage.get();
+        } catch (ExecutionException e) {
+            if (e.getCause() instanceof IOException) {
+                throw (IOException) e.getCause();
             }
-            session.addMessage(message, SolverCommunication.MessageType.INPUT);
-            return message;
-        } catch (IOException e) {
-            close();
+            throw new RuntimeException("Unexpected exception during reading", e.getCause());
+        } catch (CancellationException e) {
+            throw new IOException("Cancellation during reading", e);
+        } catch (InterruptedException e) {
+            futureMessage.cancel(true);
             throw e;
         }
     }
@@ -56,14 +65,15 @@ public class BlockingLoggingPipe implements AutoCloseable, Pipe {
     }
 
     @Override
-    public synchronized void close() throws IOException {
+    public void close() throws IOException {
         if (closed) return;
-        closed = true;
+        executor.shutdownNow();
         try {
             reader.close();
         } finally {
             writer.close();
         }
+        closed = true;
     }
 
     private void throwIfClosed() throws IOException {

@@ -10,6 +10,7 @@ import java.util.concurrent.*;
 
 public class BlockingLoggingPipe implements AutoCloseable, Pipe {
     private final BufferedMessageReader reader;
+    private final BufferedMessageReader errorReader;
     private final BufferedWriter writer;
     private boolean closed = false;
 
@@ -17,12 +18,46 @@ public class BlockingLoggingPipe implements AutoCloseable, Pipe {
 
     private final ExecutorService executor;
 
-    public BlockingLoggingPipe(InputStream in, OutputStream out, SolverCommunication session, String[] messageDelimiters) {
+    private final BlockingQueue<String> processMessageQueue = new LinkedBlockingQueue<>();
+    private final BlockingQueue<IOException> processMessageErrors = new LinkedBlockingQueue<>();
+
+    private final BlockingQueue<String> processErrorQueue = new LinkedBlockingQueue<>();
+    private final BlockingQueue<IOException> processErrorErrors = new LinkedBlockingQueue<>();
+
+
+    public BlockingLoggingPipe(InputStream in, OutputStream out, InputStream error, SolverCommunication session, String[] messageDelimiters) {
         this.reader = new BufferedMessageReader(new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8)), messageDelimiters);
         this.writer = new BufferedWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8));
+        this.errorReader = new BufferedMessageReader(new BufferedReader(new InputStreamReader(error, StandardCharsets.UTF_8)), messageDelimiters);
+
         this.session = session;
 
         this.executor = Executors.newVirtualThreadPerTaskExecutor();
+
+        executor.submit(() -> {
+            try {
+                String message;
+                while ((message = reader.readMessage()) != null) {
+                    processMessageQueue.add(message);
+                    session.addMessage(message, SolverCommunication.MessageType.OUTPUT);
+                }
+            } catch (IOException e) {
+                processMessageErrors.add(e);
+            }
+        });
+
+        executor.submit(() -> {
+            try {
+                String errorMessage;
+                while ((errorMessage = errorReader.readMessage()) != null) {
+                    errorMessage = "ERR: " + errorMessage;
+                    processErrorQueue.add(errorMessage);
+                    session.addMessage(errorMessage, SolverCommunication.MessageType.ERROR);
+                }
+            } catch (IOException e) {
+                processErrorErrors.add(e);
+            }
+        });
     }
 
     @Override
@@ -42,11 +77,38 @@ public class BlockingLoggingPipe implements AutoCloseable, Pipe {
     @Override
     public @Nullable String readMessage() throws IOException, InterruptedException {
         throwIfClosed();
-        Future<String> futureMessage = executor.submit(reader::readMessage);
+        throwAnyErrors();
+
+
+        CompletableFuture<String> futureMessage = CompletableFuture.supplyAsync(() -> {
+            try {
+                return processMessageQueue.take();
+            } catch (InterruptedException e) {
+                throw new CompletionException(e);
+            }
+        }, executor);
+        CompletableFuture<String> futureErrorMessage = CompletableFuture.supplyAsync(() -> {
+            try {
+                return processErrorQueue.take();
+            } catch (InterruptedException e) {
+                throw new CompletionException(e);
+            }
+        }, executor);
+
+        CompletableFuture<String> nextMessageFuture = CompletableFuture.anyOf(futureMessage, futureErrorMessage).thenApply(result -> (String) result);
 
         try {
-            return futureMessage.get();
+            String message = nextMessageFuture.get();
+            futureMessage.cancel(true);
+            futureErrorMessage.cancel(true);
+
+            return message;
         } catch (ExecutionException e) {
+            if (e.getCause() instanceof CompletionException) {
+                if (e.getCause().getCause() instanceof InterruptedException) {
+                    throw new InterruptedException();
+                }
+            }
             if (e.getCause() instanceof IOException) {
                 throw (IOException) e.getCause();
             }
@@ -56,6 +118,15 @@ public class BlockingLoggingPipe implements AutoCloseable, Pipe {
         } catch (InterruptedException e) {
             futureMessage.cancel(true);
             throw e;
+        }
+    }
+
+    private void throwAnyErrors() throws IOException {
+        if (!processMessageErrors.isEmpty()) {
+            throw processMessageErrors.poll();
+        }
+        if (!processErrorErrors.isEmpty()) {
+            throw processErrorErrors.poll();
         }
     }
 

@@ -63,13 +63,14 @@ public class ExternalProcessLauncher {
         stop();
         try {
             ProcessBuilder builder = new ProcessBuilder(command);
-            builder.redirectErrorStream(true);
+            builder.redirectErrorStream(false);
             process = builder.start();
 
             InputStream input = process.getInputStream();
             OutputStream output = process.getOutputStream();
+            InputStream errorStream = process.getErrorStream();
 
-            pipe = new BlockingLoggingPipe(input, output, session, messageDelimiters);
+            pipe = new BlockingLoggingPipe(input, output, errorStream, session, messageDelimiters);
         } catch (IOException ex) {
             stop();
             throw ex;

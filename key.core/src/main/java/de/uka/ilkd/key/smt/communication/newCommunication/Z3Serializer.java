@@ -32,6 +32,9 @@ public class Z3Serializer implements SMTSerializer {
 
     @Override
     public SocketMessage decode(String message) {
+        if (message.startsWith("ERR: "))
+            return new ErrorMessage(message.substring(5));
+
         return switch (message) {
             case "sat" -> new ResultMessage(SMTSolverResult.ThreeValuedTruth.VALID);
             case "unsat" -> new ResultMessage(SMTSolverResult.ThreeValuedTruth.FALSIFIABLE);

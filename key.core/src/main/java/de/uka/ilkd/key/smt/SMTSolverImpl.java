@@ -175,8 +175,9 @@ public class SMTSolverImpl implements de.uka.ilkd.key.smt.SMTSolver {
             if (socketMsg instanceof ResultMessage) {
                 long timeTaken = System.currentTimeMillis() - startTime;
                 return (satisfiabilityResult = switch (((ResultMessage) socketMsg).result()) {
-                    case VALID -> SMTSolverResult.getValidResult(getType(), problem, timeTaken, solverCommunication, problemString);
-                    case FALSIFIABLE -> SMTSolverResult.getFalsifiableResult(getType(), problem, timeTaken, solverCommunication, problemString);
+                    //CAUTION: Because the negation of the problem is sent, valid and falsifiable need to be swapped here
+                    case FALSIFIABLE -> SMTSolverResult.getValidResult(getType(), problem, timeTaken, solverCommunication, problemString);
+                    case VALID -> SMTSolverResult.getFalsifiableResult(getType(), problem, timeTaken, solverCommunication, problemString);
                     case UNKNOWN -> SMTSolverResult.getUnknownResult(getType(), problem, timeTaken, solverCommunication, problemString);
                 });
             }

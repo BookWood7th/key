@@ -115,7 +115,18 @@ public class SolverListener implements SolverLauncherListener {
 
             }
             addInformation("Solver Input", solverResult.getRawSolverInput());
-            addInformation("Solver Output", solverResult.getRawSolverOutput());
+
+            String unfilteredOutput = solverResult.getRawSolverOutput();
+            StringBuilder filteredOutput = new StringBuilder();
+            //Filter output, remove success
+            for (String line : unfilteredOutput.split("\n")) {
+                //TODO other solvers may print slightly different success message
+                if (!line.equals("success")) {
+                    filteredOutput.append(line).append("\n");
+                }
+            }
+
+            addInformation("Solver Output", filteredOutput.toString());
 
             if (solver.getType().supportHasBeenChecked()
                     && !solver.getType().isSupportedVersion()) {

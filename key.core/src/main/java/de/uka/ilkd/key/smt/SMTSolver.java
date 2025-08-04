@@ -2,11 +2,15 @@ package de.uka.ilkd.key.smt;
 
 import de.uka.ilkd.key.smt.communication.SolverCommunication;
 import de.uka.ilkd.key.smt.solvertypes.SolverType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.concurrent.Callable;
 
 public interface SMTSolver extends Callable<SMTSolverResult>, AutoCloseable {
+    Logger LOGGER = LoggerFactory.getLogger(SMTSolver.class);
+
     enum SolverState {
         Waiting, Running, Stopped
     }
@@ -26,6 +30,7 @@ public interface SMTSolver extends Callable<SMTSolverResult>, AutoCloseable {
         try {
             start();
         } catch (IOException e) {
+            LOGGER.error("SMT Solver could not start{}", e.getMessage());
             //TODO better handling needed
             throw new RuntimeException(e);
         }
@@ -36,6 +41,7 @@ public interface SMTSolver extends Callable<SMTSolverResult>, AutoCloseable {
                 try {
                     extractModel();
                 } catch (IOException | InterruptedException ignored) {
+                    LOGGER.error("SMTSolver encountered an error: {}", ignored.getMessage());
                     //TODO implement better handling for this case
                 }
             }

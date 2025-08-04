@@ -151,8 +151,6 @@ public class SolverLauncher implements AutoCloseable {
         if (controlThreadPool != null) {
             controlThreadPool.shutdownNow();
         }
-        if (launcherHasBeenUsed)
-            notifyListenersOfStop();
     }
 
     /* ################ Implementation ############################ */
@@ -217,7 +215,7 @@ public class SolverLauncher implements AutoCloseable {
                     FutureTask<SMTSolverResult> solverComputationTask = new FutureTask<>(solver);
                     try {
                         solverThreadPool.submit(solverComputationTask);
-                        return solverComputationTask.get(solverType.getSolverTimeout(), TimeUnit.MILLISECONDS);
+                        return solverComputationTask.get(settings.getTimeout(solverType), TimeUnit.MILLISECONDS);
                     } catch (TimeoutException ex) {
                         solverComputationTask.cancel(true);
                         SMTSolverResult result = solver.getFinalResult();

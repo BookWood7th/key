@@ -67,7 +67,7 @@ public class BlockingLoggingPipe implements AutoCloseable, Pipe {
             writer.write(message);
             writer.newLine();
             writer.flush();
-            session.addMessage(message, SolverCommunication.MessageType.OUTPUT);
+            session.addMessage(message, SolverCommunication.MessageType.INPUT);
         } catch (IOException e) {
             close();
             throw e;

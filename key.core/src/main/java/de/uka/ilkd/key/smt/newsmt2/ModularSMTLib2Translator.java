@@ -150,7 +150,8 @@ public class ModularSMTLib2Translator implements SMTTranslator {
             sb.append("\n");
         }
 
-        sb.append("\n(check-sat)");
+        //TODO should a translation include commands?
+        //sb.append("\n(check-sat)");
 
         if (!master.getUnknownValues().isEmpty()) {
             sb.append("\n\n; --- Translation of unknown values\n");

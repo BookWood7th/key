@@ -196,15 +196,15 @@ public class SolverLauncher implements AutoCloseable {
 
         //Only consider installed solver types.
         Collection<SolverType> installedSolverTypes = solverTypes.stream().filter((type) -> {
-            if (settings.checkForSupport()) {
-                //TODO this should display a warning of some kind according to settings tooltip. Implement in SolverListener
-                //TODO its also kind of broken, as most solver versions are not supported
-                return type.checkForSupport();
-            } else {
-                boolean forceRecheckInstallFlag = false;
-                return type.isInstalled(forceRecheckInstallFlag);
-            }
+                boolean recheckInstall = false;
+                return type.isInstalled(recheckInstall);
         }).toList();
+
+        if (installedSolverTypes.isEmpty()) {
+            notifyListenersOfStop();
+            //TODO improve this handling
+            throw new RuntimeException("Chosen solver types are not installed");
+        }
 
         for (SMTProblem problem : problems) {
             for (SolverType solverType : installedSolverTypes) {

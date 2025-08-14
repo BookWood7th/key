@@ -147,15 +147,6 @@ public interface SolverType {
     String[] getDelimiters();
 
     /**
-     * Directly before the problem description is sent to the solver one can modify the problem
-     * string by using this method.
-     *
-     * @param problem the SMT problem to modify
-     * @return the modified SMT problem String
-     */
-    String modifyProblem(String problem);
-
-    /**
      * @return the parameter that can be used to gain the version of the solver when executing it.
      */
     String getVersionParameter();
@@ -195,16 +186,6 @@ public interface SolverType {
      * @return true iff the support has been checked for the currently installed solver.
      */
     boolean supportHasBeenChecked();
-
-    /**
-     * Creates a new solver socket that can handle the communication for the given solver type.
-     *
-     * @param query the ModelExtractor that can be used to extract a counterexample (for non-CE
-     *        solvers this can be null)
-     * @return the newly created socket
-     */
-    @NonNull
-    AbstractSolverSocket getSocket(ModelExtractor query);
 
     SMTSerializer getSerializer();
 }

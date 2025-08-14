@@ -5,7 +5,6 @@ import de.uka.ilkd.key.smt.communication.SolverCommunication;
 import java.io.IOException;
 
 public final class SMTSolverSocket implements AutoCloseable {
-
     private final String[] commands;
     private final ExternalProcessLauncher launcher;
 

@@ -13,14 +13,11 @@ import java.util.Arrays;
 
 import de.uka.ilkd.key.java.Services;
 import de.uka.ilkd.key.smt.*;
-import de.uka.ilkd.key.smt.communication.AbstractCESolverSocket;
 import de.uka.ilkd.key.smt.communication.AbstractSolverSocket;
-import de.uka.ilkd.key.smt.communication.Z3Socket;
 import de.uka.ilkd.key.smt.communication.newCommunication.SMTSerializer;
 import de.uka.ilkd.key.smt.communication.newCommunication.Z3Serializer;
 import de.uka.ilkd.key.smt.newsmt2.ModularSMTLib2Translator;
 
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -156,7 +153,7 @@ public final class SolverTypeImplementation implements SolverType {
 
     /**
      * The class of the {@link de.uka.ilkd.key.smt.communication.AbstractSolverSocket} to be created
-     * with {@link #getSocket(ModelExtractor)}.
+     * with.
      */
     private final Class<?> solverSocketClass;
 
@@ -169,12 +166,6 @@ public final class SolverTypeImplementation implements SolverType {
      * The preamble String for the created {@link SMTTranslator}, may be null.
      */
     private final @Nullable String preamble;
-
-    /**
-     * Used for creation of new sockets as well as modifying problem Strings. Should not be returned
-     * to outside classes.
-     */
-    private final AbstractSolverSocket solverSocket;
 
     /**
      * The SMTTranslator used to translate problems for this solver type.
@@ -228,27 +219,6 @@ public final class SolverTypeImplementation implements SolverType {
         this.solverSocketClass = solverSocketClass;
         this.preamble = preamble;
         this.translator = makeTranslator();
-        this.solverSocket = makeSocket();
-    }
-
-    private AbstractSolverSocket makeSocket() {
-        try {
-            if (AbstractCESolverSocket.class.isAssignableFrom(solverSocketClass)) {
-                return (AbstractSolverSocket) solverSocketClass
-                        .getDeclaredConstructor(SolverType.class, ModelExtractor.class)
-                        .newInstance(this, null);
-            } else {
-                return (AbstractSolverSocket) solverSocketClass
-                        .getDeclaredConstructor(SolverType.class)
-                        .newInstance(this);
-            }
-        } catch (NoSuchMethodException | IllegalArgumentException | ClassCastException
-                | InstantiationException | IllegalAccessException | InvocationTargetException e) {
-            LOGGER.warn(String.format(
-                "Using default Z3Socket for solver communication due to exception:%s%s",
-                System.lineSeparator(), e.getMessage()));
-            return new Z3Socket(this);
-        }
     }
 
     private SMTTranslator makeTranslator() {
@@ -343,8 +313,16 @@ public final class SolverTypeImplementation implements SolverType {
     @Override
     public SMTSolver createSolver(SMTProblem problem, SolverListener listener, Services services,
                                   SMTSettings smtSettings) {
-        //TODO correct SolverCapabilities values
-        return new SMTSolverImpl(this, problem, () -> false, services, smtSettings);
+        boolean supportsModelGeneration = (this == SolverTypes.Z3_CE_SOLVER);
+
+        SolverCapabilities solverCapabilities = new SolverCapabilities() {
+            @Override
+            public boolean supportsModelGeneration() {
+                return supportsModelGeneration;
+            }
+        };
+
+        return new SMTSolverImpl(this, problem, solverCapabilities, services, smtSettings);
     }
 
     @Override
@@ -429,11 +407,6 @@ public final class SolverTypeImplementation implements SolverType {
     }
 
     @Override
-    public String modifyProblem(String problem) {
-        return solverSocket.modifyProblem(problem);
-    }
-
-    @Override
     public String getVersionParameter() {
         return versionParameter;
     }
@@ -504,13 +477,8 @@ public final class SolverTypeImplementation implements SolverType {
     }
 
     @Override
-    public @NonNull AbstractSolverSocket getSocket(ModelExtractor query) {
-        return solverSocket.copy();
-    }
-
-    @Override
     public SMTSerializer getSerializer() {
-        //TODO implement Serializers for different SMT solvers
+        //This seems to work for all current SMT solvers
         return new Z3Serializer();
     }
 

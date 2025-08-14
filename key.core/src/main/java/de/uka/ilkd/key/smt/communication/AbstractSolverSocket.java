@@ -161,30 +161,6 @@ public abstract class AbstractSolverSocket {
     }
 
     /**
-     * Modify an SMT problem String in some way (e.g. prepend some SMT commands). By default, the
-     * String is not changed at all.
-     *
-     * @param problem the SMT problem String to be modified
-     * @return a modified version of the problem
-     */
-    public String modifyProblem(String problem) {
-        return problem;
-    }
-
-    /**
-     * Creates a new solver socket that can handle the communication for the given solver type.
-     *
-     * @param type the SolverType to create the socket for
-     * @param query the ModelExtractor that can be used to extract a counterexample (for non-CE
-     *        solvers this can be null)
-     * @return the newly created socket
-     */
-    public static @NonNull AbstractSolverSocket createSocket(@NonNull SolverType type,
-            ModelExtractor query) {
-        return type.getSocket(query);
-    }
-
-    /**
      * @return a shallow copy of the socket at hand (new object with the same class and identical
      *         attributes)
      */

@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.*;
 
 import de.uka.ilkd.key.smt.communication.Pipe;
+import de.uka.ilkd.key.smt.communication.newCommunication.SMTSolverSocket;
 import de.uka.ilkd.key.smt.lang.SMTFunction;
 import de.uka.ilkd.key.smt.lang.SMTSort;
 import de.uka.ilkd.key.smt.lang.Util;
@@ -942,14 +943,14 @@ public class ModelExtractor {
         return state;
     }
 
-    private void finishBasicQueries(Pipe pipe) throws IOException {
+    private void finishBasicQueries(SMTSolverSocket socket) throws IOException {
         processBasicQueries();
         generateArrayQueries();
         state = ARRAYFIELDS;
 
         if (!queries.isEmpty()) {
             Query q = queries.get(currentQuery);
-            pipe.sendMessage(q.getQuery());
+            socket.sendMessage(q.getQuery());
 
         } else {
 
@@ -958,12 +959,11 @@ public class ModelExtractor {
 
             if (!queries.isEmpty()) {
                 Query q = queries.get(currentQuery);
-                pipe.sendMessage(q.getQuery());
+                socket.sendMessage(q.getQuery());
             } else {
                 model.processSequenceNames();
                 model.processObjectNames();
                 state = FINISHED;
-                pipe.sendMessage("(exit)\n");
             }
         }
     }
@@ -1138,7 +1138,7 @@ public class ModelExtractor {
 
     }
 
-    public void messageIncoming(Pipe pipe, String message) throws IOException {
+    public void messageIncoming(SMTSolverSocket socket, String message) throws IOException {
         if (state == WORKING) {
             if (currentQuery >= 0 && currentQuery < queries.size()) {
                 Query q = queries.get(currentQuery);
@@ -1146,13 +1146,13 @@ public class ModelExtractor {
 
                 ++currentQuery;
                 if (currentQuery >= queries.size()) {
-                    finishBasicQueries(pipe);
+                    finishBasicQueries(socket);
                     return;
                 }
                 q = queries.get(currentQuery);
-                pipe.sendMessage(q.getQuery());
+                socket.sendMessage(q.getQuery());
             } else {
-                finishBasicQueries(pipe);
+                finishBasicQueries(socket);
             }
         } else if (state == ARRAYFIELDS) {
             if (currentQuery >= 0 && currentQuery < queries.size()) {
@@ -1162,13 +1162,13 @@ public class ModelExtractor {
 
                 ++currentQuery;
                 if (currentQuery >= queries.size()) {
-                    finishArrayQueries(pipe);
+                    finishArrayQueries(socket);
                     return;
                 }
                 q = queries.get(currentQuery);
-                pipe.sendMessage(q.getQuery());
+                socket.sendMessage(q.getQuery());
             } else {
-                finishArrayQueries(pipe);
+                finishArrayQueries(socket);
             }
         } else if (state == TYPES) {
             if (currentQuery >= 0 && currentQuery < queries.size()) {
@@ -1178,13 +1178,13 @@ public class ModelExtractor {
 
                 ++currentQuery;
                 if (currentQuery >= queries.size()) {
-                    finishTypesQueries(pipe);
+                    finishTypesQueries(socket);
                     return;
                 }
                 q = queries.get(currentQuery);
-                pipe.sendMessage(q.getQuery());
+                socket.sendMessage(q.getQuery());
             } else {
-                finishTypesQueries(pipe);
+                finishTypesQueries(socket);
             }
         } else if (state == SEQ) {
             if (currentQuery >= 0 && currentQuery < queries.size()) {
@@ -1194,39 +1194,37 @@ public class ModelExtractor {
 
                 ++currentQuery;
                 if (currentQuery >= queries.size()) {
-                    finishSeqQueries(pipe);
+                    finishSeqQueries(socket);
                     return;
                 }
                 q = queries.get(currentQuery);
-                pipe.sendMessage(q.getQuery());
+                socket.sendMessage(q.getQuery());
             } else {
-                finishSeqQueries(pipe);
+                finishSeqQueries(socket);
             }
         }
     }
 
-    private void finishTypesQueries(Pipe pipe) throws IOException {
+    private void finishTypesQueries(SMTSolverSocket socket) throws IOException {
         processTypesQueries();
-        startBasicQueries(pipe);
+        startBasicQueries(socket);
 
     }
 
-    private void finishSeqQueries(Pipe pipe) throws IOException {
+    private void finishSeqQueries(SMTSolverSocket socket) throws IOException {
         processSeqQueries();
         model.processSeqValues();
         model.processSequenceNames();
         model.processObjectNames();
         state = FINISHED;
-        pipe.sendMessage("(exit)\n");
-
     }
 
 
-    private void startBasicQueries(Pipe pipe) throws IOException {
+    private void startBasicQueries(SMTSolverSocket socket) throws IOException {
         generateBasicQueries();
         Query q = queries.get(currentQuery);
         state = WORKING;
-        pipe.sendMessage(q.getQuery());
+        socket.sendMessage(q.getQuery());
     }
 
 
@@ -1248,18 +1246,17 @@ public class ModelExtractor {
     }
 
 
-    private void finishArrayQueries(Pipe pipe) throws IOException {
+    private void finishArrayQueries(SMTSolverSocket socket) throws IOException {
 
         processArrayQueries();
         state = SEQ;
         generateSeqQueries();
         if (!queries.isEmpty()) {
-            pipe.sendMessage(queries.get(currentQuery).getQuery());
+            socket.sendMessage(queries.get(currentQuery).getQuery());
         } else {
             model.processSequenceNames();
             model.processObjectNames();
             state = FINISHED;
-            pipe.sendMessage("(exit)\n");
         }
 
 
@@ -1300,15 +1297,15 @@ public class ModelExtractor {
         }
     }
 
-    public void start(Pipe pipe) throws IOException {
+    public void start(SMTSolverSocket socket) throws IOException {
         generateTypeQueries();
         if (!queries.isEmpty()) {
             currentQuery = 0;
             Query q = queries.get(currentQuery);
             state = TYPES;
-            pipe.sendMessage(q.getQuery());
+            socket.sendMessage(q.getQuery());
         } else {
-            finishTypesQueries(pipe);
+            finishTypesQueries(socket);
         }
 
 

@@ -132,7 +132,7 @@ public class SMTSolverImpl implements de.uka.ilkd.key.smt.SMTSolver {
         close();
         try {
             socket.open();
-            socket.sendMessage(getType().modifyProblem(problemString));
+            socket.sendMessage(problemString);
         } catch (IOException e) {
             close();
             throw e;
@@ -183,6 +183,7 @@ public class SMTSolverImpl implements de.uka.ilkd.key.smt.SMTSolver {
             }
         }
         long timeTaken = System.currentTimeMillis() - startTime;
+        close();
         //At this point an interrupt occured, before a result was returned. Return an ExceptionResult
         return satisfiabilityResult = SMTSolverResult.getExceptionResult(getType(), problem, timeTaken, solverCommunication, problemString, new InterruptedException());
     }
@@ -190,8 +191,8 @@ public class SMTSolverImpl implements de.uka.ilkd.key.smt.SMTSolver {
     @Override
     public synchronized ModelExtractor extractModel() throws IOException {
         ensureStarted();
-        if (!getSolverCapabilities().supportsModelGeneration()) {
-            throw new IOException(problemString + " does not support model generation");
+        if (!getSolverCapabilities().supportsModelGeneration() || query == null) {
+            throw new IOException(name() + " does not support model generation");
         }
         if (satisfiabilityResult == null) {
             satisfiabilityResult = checkSatisfiability();
@@ -200,8 +201,43 @@ public class SMTSolverImpl implements de.uka.ilkd.key.smt.SMTSolver {
             throw new IllegalStateException(problemString + " is satisfiable");
         }
 
-        //TODO implement querying
+        //This may only work with Z3 currently due to the way ModelExtractor is coded
+        //Request model and make Solver output poison pill once done
+        socket.sendMessage("(get-model)");
+        socket.sendMessage("(echo \"endmodel\")");
 
+        //Skip until poison pill
+        while (!Thread.currentThread().isInterrupted()) {
+            try {
+                if (socket.readMessage().equals("endmodel"))
+                    break;
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        if (query.getState() != ModelExtractor.DEFAULT) {
+            return query;
+        }
+
+        //Prepare model extractor
+        query.getModel().setEmpty(true);
+        query.start(socket);
+
+        //Extract model, ModelExtractor will keep sending messages
+        String solverMessage;
+        while (!Thread.currentThread().isInterrupted() && query.getState() != ModelExtractor.FINISHED) {
+            try {
+                solverMessage = socket.readMessage();
+                //Skip "success" messages
+                if (solverMessage.equals("success"))
+                    continue;
+
+                query.messageIncoming(socket, solverMessage);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
         return query;
     }
 
@@ -284,6 +320,11 @@ public class SMTSolverImpl implements de.uka.ilkd.key.smt.SMTSolver {
                     listener.processTimeout(solver, problem); }
                 catch (Exception ignored) {}});
         }
+    }
+
+    @Override
+    public SMTSolverResult setFinalResult(SMTSolverResult finalResult) {
+        return satisfiabilityResult = finalResult;
     }
 
     @Override

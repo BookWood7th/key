@@ -65,6 +65,9 @@ public interface SMTSolver extends Callable<SMTSolverResult>, AutoCloseable {
     SMTSolverResult getFinalResult();
 
     @Deprecated
+    SMTSolverResult setFinalResult(SMTSolverResult result);
+
+    @Deprecated
     ModelExtractor getQuery();
 
     //TODO this used to record the scheduled start time of the timeout task. Investigate side effects of making this return start time of solver

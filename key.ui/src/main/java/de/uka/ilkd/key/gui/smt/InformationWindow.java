@@ -10,7 +10,6 @@ import javax.swing.*;
 import de.uka.ilkd.key.gui.configuration.Config;
 import de.uka.ilkd.key.gui.sourceview.TextLineNumber;
 import de.uka.ilkd.key.smt.SMTSolver;
-import de.uka.ilkd.key.smt.communication.AbstractCESolverSocket;
 import de.uka.ilkd.key.smt.model.Model;
 
 

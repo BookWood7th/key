@@ -8,6 +8,7 @@ import de.uka.ilkd.key.proof.mgt.SpecificationRepository;
 import de.uka.ilkd.key.smt.communication.SolverCommunication;
 import de.uka.ilkd.key.smt.communication.newCommunication.*;
 import de.uka.ilkd.key.smt.communication.newCommunication.commands.CheckSatCommand;
+import de.uka.ilkd.key.smt.communication.newCommunication.commands.GetUnsatCoreCommand;
 import de.uka.ilkd.key.smt.solvertypes.SolverType;
 import de.uka.ilkd.key.smt.solvertypes.SolverTypes;
 import org.slf4j.Logger;
@@ -186,6 +187,38 @@ public class SMTSolverImpl implements de.uka.ilkd.key.smt.SMTSolver {
         close();
         //At this point an interrupt occured, before a result was returned. Return an ExceptionResult
         return satisfiabilityResult = SMTSolverResult.getExceptionResult(getType(), problem, timeTaken, solverCommunication, problemString, new InterruptedException());
+    }
+
+    @Override
+    public synchronized String getUnsatCore() {
+        SMTSerializer serializer = getType().getSerializer();
+        try {
+            socket.sendMessage(serializer.serialize(new GetUnsatCoreCommand()));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        //According to SMT-LIB2 standard this can only be
+        //(error ...) if unsupported
+        //SExpr containing list of assertions
+        String solverOutput;
+        StringBuilder unsatCore = new StringBuilder();
+
+        while (!Thread.currentThread().isInterrupted()) {
+            try {
+                solverOutput = socket.readMessage();
+
+                if (solverOutput.startsWith("(error"))
+                    return null;
+
+                if (solverOutput.endsWith(")")) {
+                    break;
+                }
+            } catch (IOException | InterruptedException e) {
+                return null;
+            }
+        }
+        return unsatCore.toString();
     }
 
     @Override

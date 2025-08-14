@@ -220,7 +220,8 @@ public class SolverLauncher implements AutoCloseable {
                         solverComputationTask.cancel(true);
                         SMTSolverResult result = solver.getFinalResult();
                         //TODO this doesn't change the result stored by the solver, so SolverListener doesn't notice this is timeout
-                        return result.changeToTimeoutResult();
+                        solver.setFinalResult(result.changeToTimeoutResult());
+                        return solver.getFinalResult();
                     } catch (InterruptedException ex) {
                         solverComputationTask.cancel(true);
                         solver.close();

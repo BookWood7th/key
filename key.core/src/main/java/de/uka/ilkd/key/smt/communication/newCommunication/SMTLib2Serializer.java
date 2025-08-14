@@ -3,7 +3,7 @@ package de.uka.ilkd.key.smt.communication.newCommunication;
 import de.uka.ilkd.key.smt.SMTSolverResult;
 import de.uka.ilkd.key.smt.communication.newCommunication.commands.*;
 
-public class Z3Serializer implements SMTSerializer {
+public class SMTLib2Serializer implements SMTSerializer {
     @Override
     public String serialize(StandardCommand standardCommand) {
         return switch (standardCommand) {
@@ -26,7 +26,10 @@ public class Z3Serializer implements SMTSerializer {
         return switch (command) {
             case StandardCommand standardCommand -> serialize(standardCommand);
             case GetModelCommand getModelCommand -> "(get-model)";
-            default -> throw new CommandNotSupportedException("Unsupported command: " + command);
+            case GetUnsatCoreCommand getUnsatCoreCommand ->  "(get-unsat-core)";
+            default -> {
+                throw new CommandNotSupportedException("Unsupported command: " + command);
+            }
         };
     }
 

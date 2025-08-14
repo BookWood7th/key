@@ -19,6 +19,7 @@ public interface SMTSolver extends Callable<SMTSolverResult>, AutoCloseable {
 
     void start() throws IOException;
     SMTSolverResult checkSatisfiability();
+    String getUnsatCore();
     ModelExtractor extractModel() throws IOException, InterruptedException;
 
     SolverCommunication getSolverCommunication();
@@ -40,12 +41,15 @@ public interface SMTSolver extends Callable<SMTSolverResult>, AutoCloseable {
                     && getSolverCapabilities().supportsModelGeneration()) {
                 try {
                     extractModel();
-                } catch (IOException | InterruptedException ignored) {
-                    LOGGER.error("SMTSolver encountered an error: {}", ignored.getMessage());
+                } catch (IOException | InterruptedException e) {
+                    LOGGER.error("SMTSolver encountered an error: {}", e.getMessage());
                     //TODO implement better handling for this case
                 }
+            } else if (result.isValid() == SMTSolverResult.ThreeValuedTruth.VALID
+                    && getSolverCapabilities().supportsUnsatCore()) {
+                getUnsatCore();
             }
-            return result;
+                return result;
         } finally {
             try {
                 close();

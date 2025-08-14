@@ -15,7 +15,7 @@ import de.uka.ilkd.key.java.Services;
 import de.uka.ilkd.key.smt.*;
 import de.uka.ilkd.key.smt.communication.AbstractSolverSocket;
 import de.uka.ilkd.key.smt.communication.newCommunication.SMTSerializer;
-import de.uka.ilkd.key.smt.communication.newCommunication.Z3Serializer;
+import de.uka.ilkd.key.smt.communication.newCommunication.SMTLib2Serializer;
 import de.uka.ilkd.key.smt.newsmt2.ModularSMTLib2Translator;
 
 import org.jspecify.annotations.Nullable;
@@ -314,11 +314,17 @@ public final class SolverTypeImplementation implements SolverType {
     public SMTSolver createSolver(SMTProblem problem, SolverListener listener, Services services,
                                   SMTSettings smtSettings) {
         boolean supportsModelGeneration = (this == SolverTypes.Z3_CE_SOLVER);
+        boolean supportsUnsatCore = Arrays.asList(handlerOptions).contains("getUnsatCore");
 
         SolverCapabilities solverCapabilities = new SolverCapabilities() {
             @Override
             public boolean supportsModelGeneration() {
                 return supportsModelGeneration;
+            }
+
+            @Override
+            public boolean supportsUnsatCore() {
+                return supportsUnsatCore;
             }
         };
 
@@ -479,7 +485,7 @@ public final class SolverTypeImplementation implements SolverType {
     @Override
     public SMTSerializer getSerializer() {
         //This seems to work for all current SMT solvers
-        return new Z3Serializer();
+        return new SMTLib2Serializer();
     }
 
 }

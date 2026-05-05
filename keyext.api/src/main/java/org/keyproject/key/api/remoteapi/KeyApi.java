@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-only */
 package org.keyproject.key.api.remoteapi;
 
+
 /**
  * The combined interface that is provided by KeY.
  */

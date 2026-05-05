@@ -3,12 +3,11 @@
  * SPDX-License-Identifier: GPL-2.0-only */
 package org.keyproject.key.api.data;
 
+import java.lang.reflect.Field;
+
 import de.uka.ilkd.key.proof.Proof;
-import de.uka.ilkd.key.settings.ProofSettings;
 import de.uka.ilkd.key.settings.StrategySettings;
 import de.uka.ilkd.key.strategy.StrategyProperties;
-
-import java.lang.reflect.Field;
 
 /**
  * @author Alexander Weigl

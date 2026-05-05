@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: GPL-2.0-only */
 package org.keyproject.key.api.data;
 
-import java.lang.ref.WeakReference;
 import java.util.Objects;
 
 import de.uka.ilkd.key.control.KeYEnvironment;
@@ -154,14 +153,15 @@ public class KeyIdentifications {
                                           BiMap<ProofId, ProofContainer> mapProof
     ) {
 
-        public KeyEnvironmentContainer(KeYEnvironment<?> env) {
+    public KeyEnvironmentContainer(KeYEnvironment<?> env) {
             this(new Box<>(env), HashBiMap.create(1));
         }
 
-        void dispose() {
-            env.clear();
-            mapProof.clear();
-        }
+    void dispose() {
+        env.clear();
+        mapProof.clear();
+    }
+
     }
 
     private record ProofContainer(Box<Proof> wProof,
@@ -169,38 +169,39 @@ public class KeyIdentifications {
                                   BiMap<TreeNodeId, Box<TreeNodeDesc>> mapTreeNode,
                                   BiMap<NodeTextId, NodeText> mapGoalText
     ) {
-        public ProofContainer(Proof proof) {
+
+    public ProofContainer(Proof proof) {
             this(new Box<>(proof), HashBiMap.create(16), HashBiMap.create(16), HashBiMap.create(16));
         }
 
-        void dispose() {
-            mapNode.clear();
-        }
-    }
-
-    private static class Box<T> {
-        @Nullable
-        private T value;
-
-        public Box(T value) {
-            this.value = value;
-        }
-
-        @Nullable
-        public T get() {
-            return value;
-        }
-
-        public void set(T value) {
-            this.value = value;
-        }
-
-        public boolean isEmpty() {
-            return value == null;
-        }
-
-        public void clear() {
-            value = null;
-        }
+    void dispose() {
+        mapNode.clear();
     }
 }
+
+
+private static class Box<T> {
+    @Nullable
+    private T value;
+
+    public Box(T value) {
+        this.value = value;
+    }
+
+    @Nullable
+    public T get() {
+        return value;
+    }
+
+    public void set(T value) {
+        this.value = value;
+    }
+
+    public boolean isEmpty() {
+        return value == null;
+    }
+
+    public void clear() {
+        value = null;
+    }
+}}

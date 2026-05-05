@@ -3,5 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-only */
 package org.keyproject.key.api.data;
 
-public interface KeYDataTransferObject {
+import java.util.List;
+
+public record AnnotationCheckingResults(List<String> changedContracts, List<String> changedCodeSnippets) {
 }

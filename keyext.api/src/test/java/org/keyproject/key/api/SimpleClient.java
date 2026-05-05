@@ -6,9 +6,6 @@ package org.keyproject.key.api;
 import java.util.concurrent.CompletableFuture;
 import javax.annotation.Nullable;
 
-import de.uka.ilkd.key.prover.TaskFinishedInfo;
-import de.uka.ilkd.key.prover.TaskStartedInfo;
-
 import org.keyproject.key.api.remoteclient.*;
 
 class SimpleClient implements ClientApi {

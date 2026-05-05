@@ -5,5 +5,7 @@ repositories {
 dependencies {
     implementation project(":key.core")
 
+    implementation 'com.google.code.gson:gson:2.10.1'
+
     implementation files('jmlparser/javaparser-core/target/jmlparser-core-3.25.10-b6-SNAPSHOT.jar')
 }

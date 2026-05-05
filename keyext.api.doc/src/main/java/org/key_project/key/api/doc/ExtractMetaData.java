@@ -67,6 +67,7 @@ public class ExtractMetaData implements Callable<Integer> {
     @Option(names = { "-o", "--output" }, description = "Output folder")
     private Path output = Paths.get("out");
 
+    //TODO this generates python code
     public static void main(String[] args) {
         int exitCode = new CommandLine(new ExtractMetaData()).execute(args);
         System.exit(exitCode);

@@ -6,9 +6,7 @@ package org.keyproject.key.api;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -41,6 +39,7 @@ import de.uka.ilkd.key.strategy.StrategyProperties;
 import de.uka.ilkd.key.util.KeYConstants;
 
 import org.key_project.jmlsurgeon.ParsingException;
+import org.key_project.jmlsurgeon.Surgeon;
 import org.key_project.util.collection.ImmutableList;
 import org.key_project.util.collection.ImmutableSet;
 import org.key_project.util.reflection.ClassLoaderUtil;
@@ -121,18 +120,18 @@ public final class KeyApiImpl implements KeyApi {
     @Override
     public CompletableFuture<List<ProofMacroDesc>> getAvailableMacros() {
         return CompletableFuture.completedFuture(
-                StreamSupport
-                        .stream(ClassLoaderUtil.loadServices(ProofMacro.class).spliterator(),false)
-                        .map(ProofMacroDesc::from).toList());
+            StreamSupport
+                    .stream(ClassLoaderUtil.loadServices(ProofMacro.class).spliterator(), false)
+                    .map(ProofMacroDesc::from).toList());
     }
 
     @Override
     public CompletableFuture<List<ProofScriptCommandDesc>> getAvailableScriptCommands() {
         return CompletableFuture.completedFuture(
-                StreamSupport
-                        .stream(ClassLoaderUtil.loadServices(ProofScriptCommand.class).spliterator(),
-                                false)
-                        .map(ProofScriptCommandDesc::from).toList());
+            StreamSupport
+                    .stream(ClassLoaderUtil.loadServices(ProofScriptCommand.class).spliterator(),
+                        false)
+                    .map(ProofScriptCommandDesc::from).toList());
     }
 
     @Override
@@ -159,8 +158,8 @@ public final class KeyApiImpl implements KeyApi {
             var proof = data.find(proofId);
             var env = data.find(proofId.env());
             var macro = StreamSupport
-                                .stream(ClassLoaderUtil.loadServices(ProofMacro.class).spliterator(),false)
-                                .filter(it -> it.getName().equals(macroName)).findFirst().orElseThrow();
+                    .stream(ClassLoaderUtil.loadServices(ProofMacro.class).spliterator(), false)
+                    .filter(it -> it.getName().equals(macroName)).findFirst().orElseThrow();
 
             try {
                 var info =
@@ -180,7 +179,9 @@ public final class KeyApiImpl implements KeyApi {
             var env = data.find(proofId.env());
             options.configure(proof);
             try {
-                System.out.println("Starting proof with setting "+proof.getSettings().getStrategySettings().getActiveStrategyProperties().getProperty(StrategyProperties.STOPMODE_OPTIONS_KEY));
+                System.out.println("Starting proof with setting "
+                    + proof.getSettings().getStrategySettings().getActiveStrategyProperties()
+                            .getProperty(StrategyProperties.STOPMODE_OPTIONS_KEY));
                 env.getProofControl().startAndWaitForAutoMode(proof);
                 // clientListener);
                 return ProofStatus.from(proofId, proof);
@@ -514,10 +515,50 @@ public final class KeyApiImpl implements KeyApi {
     }
 
     @Override
-    public CompletableFuture<String> insertInvariant(String file, String methodName, String marker, String invariant) {
+    public CompletableFuture<String> insertInvariant(String file, String methodName, String marker,
+            String invariant) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return integrateLoopInvariant(file, methodName, marker, invariant);
+            } catch (ParsingException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<List<String>> getIllegallyChangedContracts(String program,
+            String annotatedProgram) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return Surgeon.getIllegallyChangedContracts(program, annotatedProgram);
+            } catch (ParsingException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<Boolean> checkNoAssumesInAnnotations(String program,
+            String annotatedProgram) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return Surgeon.checkAssumes(program, annotatedProgram);
+            } catch (ParsingException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<String> getFirstChangedCodeSnippet(String program,
+            String annotatedProgram) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return Surgeon.getFirstChangedNodeAndLocation(program, annotatedProgram)
+                        .map(nodeLocPair -> nodeLocPair.first + System.lineSeparator()
+                                + nodeLocPair.second)
+                        .orElse("");
             } catch (ParsingException e) {
                 throw new RuntimeException(e);
             }

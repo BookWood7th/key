@@ -565,6 +565,28 @@ public final class KeyApiImpl implements KeyApi {
         });
     }
 
+    @Override
+    public CompletableFuture<List<String>> getLoopsWithoutInvariants(String program) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return Surgeon.getLoopsWithoutInvariants(program);
+            } catch (ParsingException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<List<String>> getLoopsWithoutDecreases(String program) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return Surgeon.getLoopsWithoutDecreases(program);
+            } catch (ParsingException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     private class MyDefaultUserInterfaceControl extends DefaultUserInterfaceControl {
         @Override
         public void taskStarted(TaskStartedInfo info) {

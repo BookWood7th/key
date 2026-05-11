@@ -5,6 +5,7 @@ import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.Problem;
 import com.github.javaparser.ast.*;
 import com.github.javaparser.ast.comments.Comment;
+import com.github.javaparser.ast.jml.NodeWithContracts;
 import com.github.javaparser.ast.jml.clauses.*;
 import com.github.javaparser.ast.jml.doc.JmlDocStmt;
 import com.github.javaparser.ast.jml.stmt.*;
@@ -232,4 +233,40 @@ public class Surgeon {
         return Optional.of(new Pair<>(firstChangedNode.toString(), firstChangedNode.getRange().map(range -> range.begin.toString()).orElse("(line ?, col ?)")));
     }
 
+    public static List<String> getLoopsWithoutInvariants(String program) throws ParsingException {
+        List<String> loops = new ArrayList<>();
+        CompilationUnit programParse = parseProgram(program, true);
+
+        AbstractLoopVisitor loopVisitor = new AbstractLoopVisitor() {
+            @Override
+            protected <T extends Node & NodeWithContracts<T>> T visitLoop(T n, T result) {
+                if (n.getContracts().isEmpty()) {
+                    loops.add(n.toString());
+                }
+                return result;
+            }
+        };
+
+        loopVisitor.visit(programParse, null);
+        return loops;
+    }
+
+    public static List<String> getLoopsWithoutDecreases(String program) throws ParsingException {
+        List<String> loops = new ArrayList<>();
+        CompilationUnit programParse = parseProgram(program, true);
+
+        AbstractLoopVisitor loopVisitor = new AbstractLoopVisitor() {
+            @Override
+            protected <T extends Node & NodeWithContracts<T>> T visitLoop(T n, T result) {
+                for (JmlContract contract : n.getContracts()) {
+                    if (contract.getClauses().stream().noneMatch(clause -> clause.getKind().equals(JmlClauseKind.DECREASES)))
+                        loops.add(n.toString());
+                }
+                return result;
+            }
+        };
+
+        loopVisitor.visit(programParse, null);
+        return loops;
+    }
 }

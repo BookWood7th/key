@@ -24,4 +24,10 @@ public interface JMLSurgeon {
 
     @JsonRequest
     CompletableFuture<String> getFirstChangedCodeSnippet(String program, String annotatedProgram);
+
+    @JsonRequest
+    CompletableFuture<List<String>> getLoopsWithoutInvariants(String program);
+
+    @JsonRequest
+    CompletableFuture<List<String>> getLoopsWithoutDecreases(String program);
 }

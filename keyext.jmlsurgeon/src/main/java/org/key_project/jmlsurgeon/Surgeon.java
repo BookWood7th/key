@@ -4,6 +4,7 @@ import com.github.javaparser.JavaParser;
 import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.Problem;
 import com.github.javaparser.ast.*;
+import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.comments.Comment;
 import com.github.javaparser.ast.jml.NodeWithContracts;
 import com.github.javaparser.ast.jml.clauses.*;
@@ -44,6 +45,28 @@ public class Surgeon {
             //return contract.getResult().get().getChildren().stream().map((x) -> (JmlContract) x).collect(NodeList::new, NodeList::add, NodeList::addAll);
         } else {
             throw new ParsingException("Failed to parse JML fragment: " + result.getProblems().stream().map(Problem::getMessage).collect(Collectors.joining(", ")));
+        }
+    }
+
+    public static MethodDeclaration parseMethodDeclaration(String methodDeclaration) throws ParsingException {
+        ParserConfiguration configuration = new ParserConfiguration();
+        configuration.setProcessJml(false);
+        JavaParser p = new JavaParser(configuration);
+        var result = p.parseMethodDeclaration(methodDeclaration);
+        if (result.isSuccessful()) {
+            return result.getResult().get();
+        } else {
+            List<Map<String, String>> problems = new ArrayList<>();
+            Base64.Encoder encoder = Base64.getEncoder();
+            for (Problem problem : result.getProblems()) {
+                Map<String, String> entry = new HashMap<>();
+                entry.put("message", encoder.encodeToString(problem.getMessage().getBytes(StandardCharsets.UTF_8)));
+                String location = problem.getLocation().map(l -> l.getBegin().getRange().map((r) -> r.begin.toString()).orElse("(line ?,col ?)")).orElse("(line ?,col ?)");
+                entry.put("location", encoder.encodeToString(location.getBytes(StandardCharsets.UTF_8)));
+                entry.put("cause", encoder.encodeToString(problem.getCause().map(Throwable::getMessage).orElse("").getBytes(StandardCharsets.UTF_8)));
+                problems.add(entry);
+            }
+            throw new ParsingException(new Gson().toJson(problems));
         }
     }
 

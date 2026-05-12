@@ -1,6 +1,9 @@
 package org.key_project.jmlsurgeon;
 
+import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.NodeList;
+import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.jml.NodeWithContracts;
 import org.junit.jupiter.api.Test;
 
@@ -33,15 +36,6 @@ public class SurgeonTest {
                 """;
 
         try {
-            AbstractLoopVisitor visitor = new AbstractLoopVisitor() {
-
-                @Override
-                protected <T extends Node & NodeWithContracts<T>> T visitLoop(T n, T result) {
-                    System.out.println(n.toString());
-                    return result;
-                }
-            };
-            visitor.visit(Surgeon.parseFile(prog), null);
             assertTrue(Surgeon.getIllegallyChangedContracts(prog, prog2).isEmpty());
             assertTrue(Surgeon.getFirstChangedNodeAndLocation(prog, prog2).isEmpty());
         } catch (ParsingException e) {

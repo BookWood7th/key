@@ -1,10 +1,5 @@
 package org.key_project.jmlsurgeon;
 
-import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.Node;
-import com.github.javaparser.ast.NodeList;
-import com.github.javaparser.ast.body.MethodDeclaration;
-import com.github.javaparser.ast.jml.NodeWithContracts;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -19,7 +14,14 @@ public class SurgeonTest {
                     @ ensures true;
                     @*/
                     public static void main(String[] args) {
-                        while(true) { }
+                        while(true) {
+                            a();
+                        }
+                    }
+                    
+                    public static void a() {
+                        String[] test = new String[1];
+                        main(test);
                     }
                 }
                 """;
@@ -30,12 +32,19 @@ public class SurgeonTest {
                     @ ensures true;
                     @*/
                     public static void main(String[] args) {
-                        while(true) { }
+                        while(true)
+                            a();
+                    }
+                    
+                    public static void a() {
+                        String[] test = new String[1];
+                        main(test);
                     }
                 }
                 """;
 
         try {
+            assertFalse(Surgeon.findRecursiveFunctionsWithoutMeasuredBy(prog).isEmpty());
             assertTrue(Surgeon.getIllegallyChangedContracts(prog, prog2).isEmpty());
             assertTrue(Surgeon.getFirstChangedNodeAndLocation(prog, prog2).isEmpty());
         } catch (ParsingException e) {

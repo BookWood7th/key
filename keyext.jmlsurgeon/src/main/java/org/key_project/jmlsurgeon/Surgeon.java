@@ -4,13 +4,19 @@ import com.github.javaparser.JavaParser;
 import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.Problem;
 import com.github.javaparser.ast.*;
+import com.github.javaparser.ast.body.CallableDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.comments.Comment;
+import com.github.javaparser.ast.expr.MethodCallExpr;
 import com.github.javaparser.ast.jml.NodeWithContracts;
 import com.github.javaparser.ast.jml.clauses.*;
 import com.github.javaparser.ast.jml.doc.JmlDocStmt;
 import com.github.javaparser.ast.jml.stmt.*;
 import com.github.javaparser.jml.JmlDocSanitizer;
+import com.github.javaparser.resolution.declarations.ResolvedMethodDeclaration;
+import com.github.javaparser.symbolsolver.JavaSymbolSolver;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
 import com.google.gson.Gson;
 import org.key_project.util.collection.Pair;
 
@@ -291,5 +297,112 @@ public class Surgeon {
 
         loopVisitor.visit(programParse, null);
         return loops;
+    }
+
+    public static CompilationUnit parseWithResolver(String program) throws ParsingException {
+        ParserConfiguration configuration = new ParserConfiguration();
+        configuration.setProcessJml(true);
+        CombinedTypeSolver typeSolver = new CombinedTypeSolver();
+        typeSolver.add(new ReflectionTypeSolver());
+        JavaSymbolSolver solver = new JavaSymbolSolver(typeSolver);
+        configuration.setSymbolResolver(solver);
+        JavaParser p = new JavaParser(configuration);
+        var result = p.parse(program);
+        if (result.isSuccessful()) {
+            return result.getResult().get();
+        } else {
+            List<Map<String, String>> problems = new ArrayList<>();
+            Base64.Encoder encoder = Base64.getEncoder();
+            for (Problem problem : result.getProblems()) {
+                Map<String, String> entry = new HashMap<>();
+                entry.put("message", encoder.encodeToString(problem.getMessage().getBytes(StandardCharsets.UTF_8)));
+                String location = problem.getLocation().map(l -> l.getBegin().getRange().map((r) -> r.begin.toString()).orElse("(line ?,col ?)")).orElse("(line ?,col ?)");
+                entry.put("location", encoder.encodeToString(location.getBytes(StandardCharsets.UTF_8)));
+                entry.put("cause", encoder.encodeToString(problem.getCause().map(Throwable::getMessage).orElse("").getBytes(StandardCharsets.UTF_8)));
+                problems.add(entry);
+            }
+            throw new ParsingException(new Gson().toJson(problems));
+        }
+    }
+
+    public static List<String> findRecursiveFunctionsWithoutMeasuredBy(String program) throws ParsingException {
+        CompilationUnit programParse = parseWithResolver(program);
+        Collection<MethodDeclaration> methods = programParse.findAll(MethodDeclaration.class);
+
+        methods.removeIf(method -> {
+            try {
+                return !isRecursiveFunction(programParse, method);
+            } catch (ParsingException e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        methods.removeIf(method -> {
+            if (method.getContracts().isEmpty()) {
+                return false;
+            }
+            return method.getContracts().stream()
+                    .anyMatch(contract -> contract.getClauses().stream()
+                            .noneMatch(clause -> clause.getKind().equals(JmlClauseKind.MEASURED_BY)));
+        });
+
+        return methods.stream().map((md) -> md.resolve().getQualifiedSignature()).collect(Collectors.toList());
+    }
+
+    //Checks syntactically if the function which matches the signature of the methodHeader has a recursion inside the program
+    public static boolean isRecursiveFunction(CompilationUnit program, MethodDeclaration methodDeclaration) throws ParsingException {
+        String targetSignature = methodDeclaration
+                .resolve().getQualifiedSignature();
+
+        Set<String> checkedSigs = new HashSet<>();
+        Queue<MethodDeclaration> methodsToCheck = new LinkedList<>();
+        methodsToCheck.add(methodDeclaration);
+
+        while (!methodsToCheck.isEmpty()) {
+            MethodDeclaration method = methodsToCheck.poll();
+            String methodSignature = method.resolve().getQualifiedSignature();
+
+            if (!checkedSigs.add(methodSignature)) {
+                continue;
+            }
+
+            if (method.getBody().isEmpty()) {
+                continue;
+            }
+
+            for (MethodCallExpr methodCall : method.getBody().get().findAll(MethodCallExpr.class)) {
+                try {
+                    ResolvedMethodDeclaration resolved = methodCall.resolve();
+                    String callSignature = resolved.getQualifiedSignature();
+
+                    if (callSignature.equals(targetSignature)) {
+                        return true;
+                    }
+
+                    resolved.toAst().ifPresent(node -> {
+                        if (node instanceof MethodDeclaration md) {
+                            methodsToCheck.add(md);
+                        }
+                    });
+                } catch (Exception ignored) {
+
+                }
+            }
+        }
+        return false;
+    }
+
+    private static Optional<MethodDeclaration> findMethodMatchingHeader(String program, String methodHeader) throws ParsingException {
+        CallableDeclaration.Signature signature = parseMethodDeclaration(methodHeader).getSignature();
+
+
+        return findMethodMatchingSignature(program, signature);
+    }
+
+    private static Optional<MethodDeclaration> findMethodMatchingSignature(String program, CallableDeclaration.Signature signature) throws ParsingException {
+        CompilationUnit programParse = parseProgram(program, true);
+        programParse.getAllComments().forEach(Comment::remove);
+
+        return programParse.findFirst(MethodDeclaration.class, (md) -> md.getSignature().equals(signature));
     }
 }

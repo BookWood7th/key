@@ -30,4 +30,7 @@ public interface JMLSurgeon {
 
     @JsonRequest
     CompletableFuture<List<String>> getLoopsWithoutDecreases(String program);
+
+    @JsonRequest
+    CompletableFuture<List<String>> findRecursiveFunctionsWithoutDecreases(String program);
 }

@@ -714,6 +714,7 @@ public final class WhileInvariantRule implements BuiltInRule {
 
         // get instantiation
         final Instantiation inst = instantiate(loopRuleApp, services);
+        //TODO location of loop available here
 
         final Map<LocationVariable, Term> atPres = inst.inv.getInternalAtPres();
         final List<LocationVariable> heapContext = ((IBuiltInRuleApp) ruleApp).getHeapContext();

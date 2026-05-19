@@ -598,7 +598,7 @@ public final class WhileInvariantRule implements BuiltInRule {
     private void prepareInvInitiallyValidBranch(TermLabelState termLabelState, Services services,
             RuleApp ruleApp, Instantiation inst, final Term invTerm, Term reachableState,
             Goal initGoal) {
-        initGoal.setBranchLabel("Invariant Initially Valid");
+        initGoal.setBranchLabel(String.format("Invariant for loop at line %s Initially Valid", inst.loop.getStartPosition().line()));
         initGoal.changeFormula(
             initFormula(termLabelState, inst, invTerm, reachableState, services, initGoal),
             ruleApp.posInOccurrence());
@@ -613,7 +613,7 @@ public final class WhileInvariantRule implements BuiltInRule {
             Goal bodyGoal, final JavaBlock guardJb, final Term guardTrueTerm,
             final Term[] uBeforeLoopDefAnonVariant, final Term uAnonInv) {
         final TermBuilder tb = services.getTermBuilder();
-        bodyGoal.setBranchLabel(BODY_PRESERVES_INVARIANT_LABEL);
+        bodyGoal.setBranchLabel(BODY_PRESERVES_INVARIANT_LABEL + String.format(" for loop at line %s", inst.loop.getStartPosition().line()));
         bodyGoal.addFormula(new SequentFormula(wellFormedAnon), true, false);
 
         bodyGoal.addFormula(new SequentFormula(uAnonInv), true, false);
@@ -631,7 +631,7 @@ public final class WhileInvariantRule implements BuiltInRule {
             RuleApp ruleApp, Instantiation inst, Term wellFormedAnon, Goal useGoal,
             final JavaBlock guardJb, final Term guardFalseTerm, final Term[] uAnon,
             final Term uAnonInv) {
-        useGoal.setBranchLabel("Use Case");
+        useGoal.setBranchLabel("Use Case" + String.format(" for loop at line %s", inst.loop.getStartPosition().line()));
         useGoal.addFormula(new SequentFormula(wellFormedAnon), true, false);
         useGoal.addFormula(new SequentFormula(uAnonInv), true, false);
         final TermBuilder tb = services.getTermBuilder();
@@ -714,7 +714,6 @@ public final class WhileInvariantRule implements BuiltInRule {
 
         // get instantiation
         final Instantiation inst = instantiate(loopRuleApp, services);
-        //TODO location of loop available here
 
         final Map<LocationVariable, Term> atPres = inst.inv.getInternalAtPres();
         final List<LocationVariable> heapContext = ((IBuiltInRuleApp) ruleApp).getHeapContext();

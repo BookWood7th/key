@@ -79,7 +79,7 @@ public class ForToWhileTransformation extends WhileLoopTransformation {
 
             if (innerLabelNeeded() && breakInnerLabel != null) {
                 body = KeYJavaASTFactory.labeledStatement(breakInnerLabel.getLabel(), body,
-                    PositionInfo.UNDEFINED);
+                    x.getBody().getPositionInfo());
             }
 
             final int updateSize = (updates == null ? 0 : updates.size());

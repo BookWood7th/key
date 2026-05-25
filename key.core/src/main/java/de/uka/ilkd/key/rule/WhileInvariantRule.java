@@ -15,11 +15,7 @@ import de.uka.ilkd.key.informationflow.proof.InfFlowCheckInfo;
 import de.uka.ilkd.key.informationflow.proof.InfFlowProof;
 import de.uka.ilkd.key.informationflow.proof.init.StateVars;
 import de.uka.ilkd.key.informationflow.rule.tacletbuilder.InfFlowLoopInvariantTacletBuilder;
-import de.uka.ilkd.key.java.JavaTools;
-import de.uka.ilkd.key.java.Services;
-import de.uka.ilkd.key.java.SourceElement;
-import de.uka.ilkd.key.java.Statement;
-import de.uka.ilkd.key.java.StatementBlock;
+import de.uka.ilkd.key.java.*;
 import de.uka.ilkd.key.java.abstraction.KeYJavaType;
 import de.uka.ilkd.key.java.declaration.LocalVariableDeclaration;
 import de.uka.ilkd.key.java.declaration.VariableSpecification;
@@ -598,7 +594,17 @@ public final class WhileInvariantRule implements BuiltInRule {
     private void prepareInvInitiallyValidBranch(TermLabelState termLabelState, Services services,
             RuleApp ruleApp, Instantiation inst, final Term invTerm, Term reachableState,
             Goal initGoal) {
-        initGoal.setBranchLabel(String.format("Invariant for loop at line %s Initially Valid", inst.loop.getStartPosition().line()));
+        PositionInfo derivedPos = inst.loop.getPositionInfo();
+        if (derivedPos == PositionInfo.UNDEFINED) {
+            Statement loopBody = inst.loop.getBody();
+            if (loopBody instanceof StatementBlock) {
+                if (!((StatementBlock) loopBody).getBody().isEmpty()) {
+                    assert ((StatementBlock) loopBody).getBody().last() != null;
+                    derivedPos = ((StatementBlock) loopBody).getBody().last().getPositionInfo();
+                }
+            }
+        }
+        initGoal.setBranchLabel(String.format("Invariant for loop at line %s Initially Valid", derivedPos.getStartPosition().line()));
         initGoal.changeFormula(
             initFormula(termLabelState, inst, invTerm, reachableState, services, initGoal),
             ruleApp.posInOccurrence());

@@ -588,7 +588,7 @@ public final class KeyApiImpl implements KeyApi {
     }
 
     @Override
-    public CompletableFuture<List<String>> findRecursiveFunctionsWithoutDecreases(String program)  {
+    public CompletableFuture<List<String>> findRecursiveFunctionsWithoutDecreases(String program) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return Surgeon.getLoopsWithoutDecreases(program);

@@ -604,7 +604,7 @@ public final class WhileInvariantRule implements BuiltInRule {
                 }
             }
         }
-        initGoal.setBranchLabel(String.format("Invariant for loop at line %s Initially Valid", derivedPos.getStartPosition().line()));
+        initGoal.setBranchLabel(String.format("Invariant Initially Valid for loop at line %s", derivedPos.getStartPosition().line()));
         initGoal.changeFormula(
             initFormula(termLabelState, inst, invTerm, reachableState, services, initGoal),
             ruleApp.posInOccurrence());

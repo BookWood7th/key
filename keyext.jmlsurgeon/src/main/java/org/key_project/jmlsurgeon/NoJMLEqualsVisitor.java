@@ -141,6 +141,7 @@ public class NoJMLEqualsVisitor implements GenericVisitor<Boolean, Visitable> {
             n.removeIf(node -> (node instanceof Jmlish || node instanceof JmlDocContainer));
             n2.removeIf(node -> (node instanceof Jmlish || node instanceof JmlDocContainer));
             if (n.size() != n2.size()) {
+                offendingNode = n2.getParentNode().get();
                 return false;
             } else {
                 for(int i = 0; i < n.size(); ++i) {

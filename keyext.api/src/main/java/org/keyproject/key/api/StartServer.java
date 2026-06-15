@@ -14,6 +14,10 @@ import java.util.concurrent.Future;
 import java.util.function.Function;
 import javax.annotation.Nullable;
 
+import de.uka.ilkd.key.settings.PathConfig;
+
+import org.key_project.util.java.IOUtil;
+
 import com.google.gson.GsonBuilder;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.websocket.jakarta.WebSocketLauncherBuilder;
@@ -155,6 +159,8 @@ public class StartServer implements Runnable {
         }
 
         try {
+            PathConfig.setKeyConfigDir(
+                IOUtil.getHomeDirectory() + File.separator + "key" + serverPort);
             final var keyApi = new KeyApiImpl();
 
             if (websocket) {

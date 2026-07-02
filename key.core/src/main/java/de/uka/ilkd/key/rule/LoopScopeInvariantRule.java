@@ -7,12 +7,7 @@ import java.util.ArrayList;
 import java.util.Optional;
 
 import de.uka.ilkd.key.informationflow.proof.InfFlowCheckInfo;
-import de.uka.ilkd.key.java.KeYJavaASTFactory;
-import de.uka.ilkd.key.java.Label;
-import de.uka.ilkd.key.java.ProgramElement;
-import de.uka.ilkd.key.java.Services;
-import de.uka.ilkd.key.java.Statement;
-import de.uka.ilkd.key.java.StatementBlock;
+import de.uka.ilkd.key.java.*;
 import de.uka.ilkd.key.java.abstraction.KeYJavaType;
 import de.uka.ilkd.key.java.statement.LabeledStatement;
 import de.uka.ilkd.key.java.statement.LoopScopeBlock;
@@ -183,6 +178,20 @@ public class LoopScopeInvariantRule extends AbstractLoopInvariantRule {
     // helper methods for apply()
     // -------------------------------------------------------------------------
 
+    private static PositionInfo getPositionInfo(Instantiation inst) {
+        PositionInfo derivedPos = inst.loop().getPositionInfo();
+        if (derivedPos == PositionInfo.UNDEFINED) {
+            Statement loopBody = inst.loop().getBody();
+            if (loopBody instanceof StatementBlock) {
+                if (!((StatementBlock) loopBody).getBody().isEmpty()) {
+                    assert ((StatementBlock) loopBody).getBody().last() != null;
+                    derivedPos = ((StatementBlock) loopBody).getBody().last().getPositionInfo();
+                }
+            }
+        }
+        return derivedPos;
+    }
+
     /**
      * Sets the content of the "initially valid" goal.
      *
@@ -198,7 +207,8 @@ public class LoopScopeInvariantRule extends AbstractLoopInvariantRule {
     private void constructInitiallyGoal(Services services, RuleApp ruleApp,
             final TermLabelState termLabelState, Goal initiallyGoal, final Instantiation inst,
             final Term invTerm, Term reachableState) {
-        initiallyGoal.setBranchLabel("Invariant Initially Valid");
+        PositionInfo derivedPos = getPositionInfo(inst);
+        initiallyGoal.setBranchLabel(String.format("Invariant Initially Valid (line %s)", derivedPos.getStartPosition().line()));
         initiallyGoal.changeFormula(
             initFormula(termLabelState, inst, invTerm, reachableState, services, initiallyGoal),
             ruleApp.posInOccurrence());
@@ -238,8 +248,8 @@ public class LoopScopeInvariantRule extends AbstractLoopInvariantRule {
         final Term newFormula = formulaWithLoopScope(services, inst, anonUpdate, loop, loopLabel,
             stmtToReplace, frameCondition, variantPO, termLabelState, presrvAndUCGoal,
             uBeforeLoopDefAnonVariant, invTerm);
-
-        presrvAndUCGoal.setBranchLabel("Invariant Preserved and Used");
+        PositionInfo derivedPos = getPositionInfo(inst);
+        presrvAndUCGoal.setBranchLabel("Invariant Preserved and Used" + String.format(" (line %s)", derivedPos.getStartPosition().line()));
         presrvAndUCGoal.addFormula(new SequentFormula(uAnonInv), true, false);
         presrvAndUCGoal.addFormula(new SequentFormula(wellFormedAnon), true, false);
         presrvAndUCGoal.changeFormula(new SequentFormula(newFormula), ruleApp.posInOccurrence());

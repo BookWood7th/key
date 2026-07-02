@@ -6,17 +6,16 @@ package de.uka.ilkd.key.rule.executor.javadl;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicLong;
 
-import de.uka.ilkd.key.java.Services;
+import de.uka.ilkd.key.java.*;
+import de.uka.ilkd.key.java.statement.While;
 import de.uka.ilkd.key.logic.*;
 import de.uka.ilkd.key.logic.label.TermLabelManager;
 import de.uka.ilkd.key.logic.label.TermLabelState;
 import de.uka.ilkd.key.proof.Goal;
-import de.uka.ilkd.key.rule.FindTaclet;
-import de.uka.ilkd.key.rule.MatchConditions;
-import de.uka.ilkd.key.rule.RuleApp;
-import de.uka.ilkd.key.rule.TacletApp;
+import de.uka.ilkd.key.rule.*;
 import de.uka.ilkd.key.rule.tacletbuilder.TacletGoalTemplate;
 
+import org.key_project.logic.Name;
 import org.key_project.util.collection.ImmutableList;
 
 public abstract class FindTacletExecutor<TacletKind extends FindTaclet>
@@ -134,7 +133,7 @@ public abstract class FindTacletExecutor<TacletKind extends FindTaclet>
             currentGoal.setSequent(currentSequent);
             PERF_SET_SEQUENT.getAndAdd(System.nanoTime() - timeSetSequent);
 
-            currentGoal.setBranchLabel(gt.name());
+            currentGoal.setBranchLabel(formatGoalTemplateName(gt, ruleApp));
 
             timeTermLabels = System.nanoTime() + timeTermLabels;
             TermLabelManager.refactorSequent(termLabelState, services, ruleApp.posInOccurrence(),
@@ -158,6 +157,30 @@ public abstract class FindTacletExecutor<TacletKind extends FindTaclet>
         return newGoals;
     }
 
+    private String formatGoalTemplateName(TacletGoalTemplate gt, RuleApp ruleApp) {
+        String formattedName = gt.name();
+        PosInOccurrence pio = ruleApp.posInOccurrence();
+
+
+        if (this.taclet.getRuleSets().contains(new RuleSet(new Name("loop_scope_inv_taclet")))
+            && pio != null) {
+            Term programTerm = TermBuilder.goBelowUpdates(pio.subTerm());
+            While loop = (While) JavaTools.getActiveStatement(programTerm.javaBlock());
+            PositionInfo derivedPos = loop.getPositionInfo();
+            if (derivedPos == PositionInfo.UNDEFINED) {
+                Statement loopBody = loop.getBody();
+                if (loopBody instanceof StatementBlock) {
+                    if (!((StatementBlock) loopBody).getBody().isEmpty()) {
+                        assert ((StatementBlock) loopBody).getBody().last() != null;
+                        derivedPos = ((StatementBlock) loopBody).getBody().last().getPositionInfo();
+                    }
+                }
+            }
+            formattedName = formattedName.replace("${linenumber}", String.format("(line %s)", derivedPos.getStartPosition().line()));
+        }
+
+        return formattedName;
+    }
 
     /**
      * creates a new position information object, describing where to add the formulas or

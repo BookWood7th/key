@@ -594,6 +594,16 @@ public final class WhileInvariantRule implements BuiltInRule {
     private void prepareInvInitiallyValidBranch(TermLabelState termLabelState, Services services,
             RuleApp ruleApp, Instantiation inst, final Term invTerm, Term reachableState,
             Goal initGoal) {
+        PositionInfo derivedPos = getPositionInfo(inst);
+        initGoal.setBranchLabel(String.format("Invariant Initially Valid (line %s)", derivedPos.getStartPosition().line()));
+        initGoal.changeFormula(
+            initFormula(termLabelState, inst, invTerm, reachableState, services, initGoal),
+            ruleApp.posInOccurrence());
+        TermLabelManager.refactorGoal(termLabelState, services, ruleApp.posInOccurrence(), this,
+            initGoal, null, null);
+    }
+
+    private static PositionInfo getPositionInfo(Instantiation inst) {
         PositionInfo derivedPos = inst.loop.getPositionInfo();
         if (derivedPos == PositionInfo.UNDEFINED) {
             Statement loopBody = inst.loop.getBody();
@@ -604,12 +614,7 @@ public final class WhileInvariantRule implements BuiltInRule {
                 }
             }
         }
-        initGoal.setBranchLabel(String.format("Invariant Initially Valid for loop at line %s", derivedPos.getStartPosition().line()));
-        initGoal.changeFormula(
-            initFormula(termLabelState, inst, invTerm, reachableState, services, initGoal),
-            ruleApp.posInOccurrence());
-        TermLabelManager.refactorGoal(termLabelState, services, ruleApp.posInOccurrence(), this,
-            initGoal, null, null);
+        return derivedPos;
     }
 
 
@@ -619,7 +624,8 @@ public final class WhileInvariantRule implements BuiltInRule {
             Goal bodyGoal, final JavaBlock guardJb, final Term guardTrueTerm,
             final Term[] uBeforeLoopDefAnonVariant, final Term uAnonInv) {
         final TermBuilder tb = services.getTermBuilder();
-        bodyGoal.setBranchLabel(BODY_PRESERVES_INVARIANT_LABEL + String.format(" for loop at line %s", inst.loop.getStartPosition().line()));
+        PositionInfo derivedPos = getPositionInfo(inst);
+        bodyGoal.setBranchLabel(BODY_PRESERVES_INVARIANT_LABEL + String.format(" (line %s)", derivedPos.getStartPosition().line()));
         bodyGoal.addFormula(new SequentFormula(wellFormedAnon), true, false);
 
         bodyGoal.addFormula(new SequentFormula(uAnonInv), true, false);
@@ -637,7 +643,8 @@ public final class WhileInvariantRule implements BuiltInRule {
             RuleApp ruleApp, Instantiation inst, Term wellFormedAnon, Goal useGoal,
             final JavaBlock guardJb, final Term guardFalseTerm, final Term[] uAnon,
             final Term uAnonInv) {
-        useGoal.setBranchLabel("Use Case" + String.format(" for loop at line %s", inst.loop.getStartPosition().line()));
+        PositionInfo derivedPos = getPositionInfo(inst);
+        useGoal.setBranchLabel("Use Case" + String.format(" (line %s)", derivedPos.getStartPosition().line()));
         useGoal.addFormula(new SequentFormula(wellFormedAnon), true, false);
         useGoal.addFormula(new SequentFormula(uAnonInv), true, false);
         final TermBuilder tb = services.getTermBuilder();

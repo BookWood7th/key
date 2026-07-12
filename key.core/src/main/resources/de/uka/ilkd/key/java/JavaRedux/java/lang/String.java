@@ -555,6 +555,11 @@ public final class String extends java.lang.Object implements java.io.Serializab
 
    public static java.lang.String valueOf(boolean arg0);
    public static java.lang.String valueOf(char arg0);
+
+   /*@ public normal_behavior
+       ensures \result == Integer.toString(arg0);
+       assignable \nothing;
+    */
    public static java.lang.String valueOf(int arg0);
    public static java.lang.String valueOf(long arg0);
 //   public static java.lang.String valueOf(float arg0);

@@ -2,9 +2,9 @@ package java.lang;
 
 public final class System {
 
-    public static final java.io.InputStream in;
-    public static final java.io.PrintStream out;
-    public static final java.io.PrintStream err;
+    public static final /*@nullable@*/ java.io.InputStream in;
+    public static /*@nullable@*/ java.io.PrintStream out;
+    public static final /*@nullable@*/ java.io.PrintStream err;
 
     // Remarks: Currently the specifications assumes src and dest to be int[].
     //          This is incomplete, and should be amended when needed

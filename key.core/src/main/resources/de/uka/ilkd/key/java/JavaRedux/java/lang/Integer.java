@@ -7,13 +7,22 @@ public final class Integer implements java.lang.Comparable
 {
    public final static int MIN_VALUE = -2147483648;
    public final static int MAX_VALUE = 2147483647;
-   public final static java.lang.Class TYPE;
+   public final static /*@nullable@*/ java.lang.Class TYPE;
    public final static int SIZE = 32;
 
+   /*@ public pure normal_behavior
+       assignable \nothing;
+       ensures true;
+    */
    public static java.lang.String toString(int arg0, int arg1);
    public static java.lang.String toHexString(int arg0);
    public static java.lang.String toOctalString(int arg0);
    public static java.lang.String toBinaryString(int arg0);
+
+   /*@ public pure normal_behavior
+       assignable \nothing;
+       ensures \result == toString(arg0, 10);
+    */
    public static java.lang.String toString(int arg0);
    public static int parseInt(java.lang.String arg0, int arg1) throws java.lang.NumberFormatException;
    public static int parseInt(java.lang.String arg0) throws java.lang.NumberFormatException;

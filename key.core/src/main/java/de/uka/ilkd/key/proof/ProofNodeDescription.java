@@ -31,7 +31,8 @@ public class ProofNodeDescription implements Serializable {
                         || label.equals("Show Axiom Satisfiability") || label.startsWith("Pre (")
                         || label.startsWith("Exceptional Post (") // exceptional postcondition
                         || label.startsWith("Post (") // postcondition of a method
-                        || label.contains("Normal Execution") || label.contains("Null Reference")
+                        //|| label.contains("Normal Execution")
+                        //|| label.contains("Null Reference")
                         || label.contains("Index Out of Bounds") || label.contains("Validity")
                         || label.contains("Precondition") || label.contains("Usage")) {
                     return label;

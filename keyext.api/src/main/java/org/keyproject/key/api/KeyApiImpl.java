@@ -31,6 +31,7 @@ import de.uka.ilkd.key.proof.*;
 import de.uka.ilkd.key.proof.init.*;
 import de.uka.ilkd.key.proof.io.AbstractProblemLoader;
 import de.uka.ilkd.key.proof.io.ProblemLoaderException;
+import de.uka.ilkd.key.proof.io.ProofSaver;
 import de.uka.ilkd.key.prover.ProverTaskListener;
 import de.uka.ilkd.key.prover.TaskFinishedInfo;
 import de.uka.ilkd.key.prover.TaskStartedInfo;
@@ -196,6 +197,20 @@ public final class KeyApiImpl implements KeyApi {
     public CompletableFuture<Boolean> dispose(ProofId id) {
         data.dispose(id);
         return CompletableFuture.completedFuture(true);
+    }
+
+    @Override
+    public CompletableFuture<Boolean> saveToFile(String absolutePathString, ProofId id) {
+        return CompletableFuture.supplyAsync(() -> {
+            Proof proof = data.find(id);
+            try {
+                File saveLocation = new File(absolutePathString);
+                ProofSaver.saveToFile(saveLocation, proof);
+                return true;
+            } catch (IOException e) {
+                return false;
+            }
+        });
     }
 
     @Override

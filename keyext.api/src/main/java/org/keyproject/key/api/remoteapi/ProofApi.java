@@ -8,11 +8,8 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.jsonrpc.services.JsonSegment;
+import org.keyproject.key.api.data.*;
 import org.keyproject.key.api.data.KeyIdentifications.*;
-import org.keyproject.key.api.data.MacroStatistic;
-import org.keyproject.key.api.data.NodeDesc;
-import org.keyproject.key.api.data.ProofStatus;
-import org.keyproject.key.api.data.StrategyOptions;
 
 /**
  * @author Alexander Weigl
@@ -48,6 +45,9 @@ public interface ProofApi {
 
     @JsonRequest
     CompletableFuture<List<NodeDesc>> pruneTo(NodeId nodeId);
+
+    @JsonRequest
+    CompletableFuture<Boolean> saveToFile(String absolutePathString, KeyIdentifications.ProofId id);
 
     // @JsonRequest
     // CompletableFuture<Statistics> statistics(ProofId proof);

@@ -194,6 +194,16 @@ public final class KeyApiImpl implements KeyApi {
     }
 
     @Override
+    public CompletableFuture<ProofStatus> stopAuto(ProofId proofId) {
+        return CompletableFuture.supplyAsync(() -> {
+            Proof proof = data.find(proofId);
+            KeYEnvironment<?> env = data.find(proofId.env());
+            env.getProofControl().stopAutoMode();
+            return ProofStatus.from(proofId, proof);
+        });
+    }
+
+    @Override
     public CompletableFuture<Boolean> dispose(ProofId id) {
         data.dispose(id);
         return CompletableFuture.completedFuture(true);

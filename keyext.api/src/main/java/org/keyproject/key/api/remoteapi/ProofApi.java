@@ -29,6 +29,9 @@ public interface ProofApi {
     CompletableFuture<ProofStatus> auto(ProofId proof, StrategyOptions options);
 
     @JsonRequest
+    CompletableFuture<ProofStatus> stopAuto(ProofId proof);
+
+    @JsonRequest
     CompletableFuture<Boolean> dispose(ProofId proof);
 
     @JsonRequest

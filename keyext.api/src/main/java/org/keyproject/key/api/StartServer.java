@@ -132,13 +132,8 @@ public class StartServer implements Runnable {
             if (listenerFuture != null) {
                 listenerFuture.cancel(true);
             }
-            LOGGER.info("Closing In Stream");
-            if (in != null) {
-                in.close();
-            }
-            LOGGER.info("Closing Out Stream");
             if (out != null) {
-                out.close();
+                out.flush();
             }
             LOGGER.info("Closing Socket");
             if (socket != null) {
@@ -160,7 +155,7 @@ public class StartServer implements Runnable {
 
         try {
             PathConfig.setKeyConfigDir(
-                IOUtil.getHomeDirectory() + File.separator + "key" + serverPort);
+                IOUtil.getHomeDirectory() + File.separator + ".key" + serverPort);
             final var keyApi = new KeyApiImpl();
 
             if (websocket) {

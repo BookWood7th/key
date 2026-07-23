@@ -198,7 +198,7 @@ public final class KeyApiImpl implements KeyApi {
         return CompletableFuture.supplyAsync(() -> {
             Proof proof = data.find(proofId);
             KeYEnvironment<?> env = data.find(proofId.env());
-            env.getProofControl().stopAutoMode();
+            env.getProofControl().stopAndWaitAutoMode();
             return ProofStatus.from(proofId, proof);
         });
     }

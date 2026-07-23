@@ -5,6 +5,7 @@ package org.keyproject.key.api;
 
 
 import java.io.*;
+import java.net.BindException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -101,14 +102,17 @@ public class StartServer implements Runnable {
         }
 
         if (serverPort != null) {
-            var server = new ServerSocket(serverPort);
-            LOGGER.info("Waiting on port {}", serverPort);
-            socket = server.accept();
-            LOGGER.info("Connection to client established: {}", socket.getRemoteSocketAddress());
-            socket.setKeepAlive(true);
-            socket.setTcpNoDelay(true);
-            in = socket.getInputStream();
-            out = socket.getOutputStream();
+            try (ServerSocket server = createServerSocket(serverPort)) {
+                serverPort = server.getLocalPort();
+                LOGGER.info("Waiting on port {}", server.getLocalPort());
+                socket = server.accept();
+                LOGGER.info("Connection to client established: {}",
+                    socket.getRemoteSocketAddress());
+                socket.setKeepAlive(true);
+                socket.setTcpNoDelay(true);
+                in = socket.getInputStream();
+                out = socket.getOutputStream();
+            }
             return;
         }
 
@@ -122,6 +126,15 @@ public class StartServer implements Runnable {
 
         if (out == null || in == null) {
             throw new IllegalStateException("Could not initialize the streams");
+        }
+    }
+
+    private ServerSocket createServerSocket(int preferredPort) throws IOException {
+        try {
+            return new ServerSocket(preferredPort);
+        } catch (BindException e) {
+            LOGGER.info("Port {} is unavailable, using an ephemeral port", preferredPort);
+            return new ServerSocket(0);
         }
     }
 

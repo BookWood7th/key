@@ -185,6 +185,8 @@ public class StartServer implements Runnable {
                 clientApiLauncher.startListening().get();
             } else {
                 establishStreams();
+                PathConfig.setKeyConfigDir(
+                    IOUtil.getHomeDirectory() + File.separator + ".key" + serverPort);
                 try (var lin = in; var lout = out) {
                     var listener = launch(lout, lin, keyApi);
                     LOGGER.info("JSON-RPC is listening for requests");

@@ -9,6 +9,7 @@ import java.net.BindException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Files;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -16,8 +17,6 @@ import java.util.function.Function;
 import javax.annotation.Nullable;
 
 import de.uka.ilkd.key.settings.PathConfig;
-
-import org.key_project.util.java.IOUtil;
 
 import com.google.gson.GsonBuilder;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
@@ -168,7 +167,7 @@ public class StartServer implements Runnable {
 
         try {
             PathConfig.setKeyConfigDir(
-                IOUtil.getHomeDirectory() + File.separator + ".key" + serverPort);
+                Files.createTempDirectory("key-" + ProcessHandle.current().pid() + "-").toString());
             final var keyApi = new KeyApiImpl();
 
             if (websocket) {

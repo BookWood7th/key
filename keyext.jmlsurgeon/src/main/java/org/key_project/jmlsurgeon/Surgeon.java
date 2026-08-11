@@ -2,9 +2,11 @@ package org.key_project.jmlsurgeon;
 
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ParserConfiguration;
+import com.github.javaparser.Position;
 import com.github.javaparser.Problem;
 import com.github.javaparser.ast.*;
 import com.github.javaparser.ast.body.CallableDeclaration;
+import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.comments.Comment;
 import com.github.javaparser.ast.expr.MethodCallExpr;
@@ -25,6 +27,12 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class Surgeon {
+    private static final String staticInvCheckHelper = """
+            /*@ normal_behaviour
+              @ ensures \\static_invariant_for(%s);
+              @*/
+            static /*@helper@*/ void staticInvChecker() {}
+            """;
     private static final Collection<JmlClauseKind> legalClauseAdditions = new HashSet<JmlClauseKind>();
     static {
         legalClauseAdditions.add(JmlClauseKind.ENSURES);
@@ -113,6 +121,83 @@ public class Surgeon {
     public static CompilationUnit addMethodContract(CompilationUnit cu, String methodName, NodeList<Node> contracts) {
         var visitor = new MethodContractInsertionVisitor(methodName, contracts);
         return (CompilationUnit) visitor.visit(cu, null);
+    }
+
+
+    public static String insertStaticInvCheckHelperMethod(String program)
+            throws ParsingException {
+
+        // Parse the original program so we can reliably find classes.
+        CompilationUnit compilationUnit = parseProgram(program, true);
+
+        List<ClassOrInterfaceDeclaration> classes =
+                compilationUnit.findAll(ClassOrInterfaceDeclaration.class);
+
+        StringBuilder result = new StringBuilder(program);
+
+        // Work backwards because inserting text changes offsets.
+        for (int i = classes.size() - 1; i >= 0; i--) {
+            ClassOrInterfaceDeclaration clazz = classes.get(i);
+
+            Position end = clazz.getEnd().orElseThrow();
+
+            int offset = getOffset(program, end);
+
+            String classIndent = getIndentation(program, end);
+            String memberIndent = classIndent + "    ";
+
+            String helper = staticInvCheckHelper.formatted(
+                    clazz.getNameAsString()
+            );
+
+            helper = indent(helper, memberIndent);
+
+            result.insert(offset, "\n" + helper + "\n" + classIndent);
+        }
+
+        return result.toString();
+    }
+
+    private static String indent(String text, String indentation) {
+        return text.lines()
+                .map(line -> line.isBlank() ? line : indentation + line)
+                .collect(Collectors.joining("\n"));
+    }
+
+    private static String getIndentation(String source, Position position) {
+        int offset = getOffset(source, position);
+        int lineStart = source.lastIndexOf('\n', offset - 1) + 1;
+
+        int i = lineStart;
+
+        while (i < source.length()) {
+            char c = source.charAt(i);
+
+            if (c != ' ' && c != '\t') {
+                break;
+            }
+
+            i++;
+        }
+
+        return source.substring(lineStart, i);
+    }
+
+    private static int getOffset(String source, Position position) {
+        int offset = 0;
+
+        for (int line = 1; line < position.line; line++) {
+            int newline = source.indexOf('\n', offset);
+
+            if (newline == -1) {
+                throw new IllegalArgumentException(
+                        "Invalid position: " + position);
+            }
+
+            offset = newline + 1;
+        }
+
+        return offset + position.column - 1;
     }
 
     public static CompilationUnit addLoopInvariant(CompilationUnit cu, String methodName, String marker, NodeList<Node> contracts) {

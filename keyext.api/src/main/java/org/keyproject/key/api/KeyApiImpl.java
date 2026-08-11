@@ -576,6 +576,17 @@ public final class KeyApiImpl implements KeyApi {
     }
 
     @Override
+    public CompletableFuture<String> insertStaticInvCheckHelperMethods(String program) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return Surgeon.insertStaticInvCheckHelperMethod(program);
+            } catch (ParsingException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Override
     public CompletableFuture<String> getFirstChangedCodeSnippet(String program,
             String annotatedProgram) {
         return CompletableFuture.supplyAsync(() -> {

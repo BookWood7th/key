@@ -33,4 +33,7 @@ public interface JMLSurgeon {
 
     @JsonRequest
     CompletableFuture<List<String>> findRecursiveFunctionsWithoutDecreases(String program);
+
+    @JsonRequest
+    CompletableFuture<String> insertStaticInvCheckHelperMethods(String program);
 }
